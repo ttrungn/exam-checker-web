@@ -13,12 +13,14 @@ import { type Role, Roles } from '../../constants/auth'
 import { SIDEBAR_ITEMS, USER_MENU_ITEMS } from '../../constants/layout'
 import { fetchUserProfile } from '../../features/user/userThunk'
 import { useAppDispatch, useAppSelector } from '../../hooks/customReduxHooks'
+import { useAccountNotifications } from '../../hooks/useAccountNotifications'
 import Loading from '../Loading/Loading'
 
 const { Header, Sider, Content } = Layout
 const { Text } = Typography
 
 const AppLayout: React.FC = () => {
+  useAccountNotifications()
   const { instance } = useMsal()
   const [collapsed, setCollapsed] = useState(false)
   const { profile, isLoading } = useAppSelector((state) => state.userProfile)
