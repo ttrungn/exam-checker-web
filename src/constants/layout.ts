@@ -20,7 +20,7 @@ export type NavItem = {
 
 export const SIDEBAR_ITEMS: NavItem[] = [
   { key: '', label: 'Bảng phân tích', icon: DashboardOutlined, roles: [Roles.ADMIN] },
-  // { key: 'manager-user', label: 'Quản lý người dùng', icon: UserOutlined, roles: [Roles.ADMIN] },
+  { key: 'manage-users', label: 'Quản lý người dùng', icon: UserOutlined, roles: [Roles.ADMIN] },
   { key: 'exams', label: 'Quản lý bài thi', icon: FileTextOutlined, roles: [Roles.ADMIN] },
   { key: 'semesters', label: 'Quản lý học kỳ', icon: CalendarOutlined, roles: [Roles.ADMIN] },
   { key: 'settings', label: 'Cài đặt', icon: SettingOutlined, roles: [Roles.ADMIN] }

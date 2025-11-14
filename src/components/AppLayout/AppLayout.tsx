@@ -1,4 +1,5 @@
 import { MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined } from '@ant-design/icons'
+import { InteractionRequiredAuthError } from '@azure/msal-browser'
 import { useMsal } from '@azure/msal-react'
 
 import React, { useEffect, useMemo, useState } from 'react'
@@ -7,6 +8,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { MenuProps } from 'antd'
 import { Avatar, Button, Dropdown, Layout, Menu, Space, theme, Typography } from 'antd'
 
+import { silentRequest } from '../../configs/maslConfig'
 import { type Role, Roles } from '../../constants/auth'
 import { SIDEBAR_ITEMS, USER_MENU_ITEMS } from '../../constants/layout'
 import { fetchUserProfile } from '../../features/user/userThunk'
@@ -26,6 +28,30 @@ const AppLayout: React.FC = () => {
   const {
     token: { colorBgContainer, borderRadiusLG }
   } = theme.useToken()
+
+  useEffect(() => {
+    const account = instance.getActiveAccount()
+
+    if (!account) return
+
+    instance
+      .acquireTokenSilent(silentRequest)
+      .then((response) => {
+        console.log('ACCESS TOKEN:', response.accessToken)
+      })
+      .catch(async (error) => {
+        if (error instanceof InteractionRequiredAuthError) {
+          try {
+            const resp = await instance.acquireTokenRedirect(silentRequest)
+            console.log('ACCESS TOKEN:', resp)
+          } catch (err) {
+            console.error(err)
+          }
+        } else {
+          console.error(error)
+        }
+      })
+  }, [instance])
 
   useEffect(() => {
     if (!profile && !isLoading) {
