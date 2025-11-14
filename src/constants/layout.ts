@@ -20,14 +20,14 @@ export type NavItem = {
 
 export const SIDEBAR_ITEMS: NavItem[] = [
   { key: '', label: 'Bảng phân tích', icon: DashboardOutlined, roles: [Roles.ADMIN] },
-  // { key: 'manager-user', label: 'Quản lý người dùng', icon: UserOutlined, roles: [Roles.ADMIN] },
+  { key: 'manage-users', label: 'Quản lý người dùng', icon: UserOutlined, roles: [Roles.ADMIN] },
   { key: 'exams', label: 'Quản lý bài thi', icon: FileTextOutlined, roles: [Roles.ADMIN] },
   { key: 'semesters', label: 'Quản lý học kỳ', icon: CalendarOutlined, roles: [Roles.ADMIN] },
   { key: 'settings', label: 'Cài đặt', icon: SettingOutlined, roles: [Roles.ADMIN] }
 ]
 
 export const USER_MENU_ITEMS: NavItem[] = [
-  { key: 'profile', label: 'Profile', icon: UserOutlined, roles: [Roles.ALL] },
-  { key: 'settings', label: 'Settings', icon: SettingOutlined, roles: [Roles.ALL] },
-  { key: 'logout', label: 'Logout', icon: LogoutOutlined, danger: true, roles: [Roles.ALL] }
+  { key: 'profile', label: 'Hồ sơ cá nhân', icon: UserOutlined, roles: [Roles.ALL] },
+  { key: 'settings', label: 'Cài đặt', icon: SettingOutlined, roles: [Roles.ALL] },
+  { key: 'logout', label: 'Đăng xuất', icon: LogoutOutlined, danger: true, roles: [Roles.ALL] }
 ]

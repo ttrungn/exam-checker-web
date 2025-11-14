@@ -4,6 +4,7 @@ import { AppLayout, ProtectedRoute } from '../components'
 import MSALRedirect from '../components/Auth/MSALRedirect'
 import { DashboardPage, ExamsPage, SemestersPage, SettingsPage } from '../pages'
 import NotFound from '../pages/Errors/NotFound'
+import { UsersPage } from '../pages/Users'
 
 const AppRouter: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ const AppRouter: React.FC = () => {
           }
         >
           <Route path='/' element={<DashboardPage />} />
+          <Route path='/manage-users' element={<UsersPage />} />
           <Route path='/exams' element={<ExamsPage />} />
           <Route path='/semesters' element={<SemestersPage />} />
           <Route path='/settings' element={<SettingsPage />} />
