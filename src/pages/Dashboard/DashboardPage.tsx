@@ -6,7 +6,7 @@ import { Button, Card, Col, Row, Space, Statistic, Typography } from 'antd'
 
 const { Title, Paragraph } = Typography
 
-const AnalyticsPage: React.FC = () => {
+const DashboardPage: React.FC = () => {
   return (
     <div>
       <Title level={2}>Analytics</Title>
@@ -64,4 +64,4 @@ const AnalyticsPage: React.FC = () => {
   )
 }
 
-export default AnalyticsPage
+export default DashboardPage

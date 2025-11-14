@@ -1,2 +1,3 @@
-// Export from Dashboard folder (main dashboard pages)
-export { AnalyticsPage, ExamsPage, SemestersPage, SettingsPage } from './Dashboard'
+export { default as DashboardPage } from './Dashboard/DashboardPage'
+export { default as ExamsPage } from './Exams/ExamsPage'
+export { default as SettingsPage } from './Settings/SettingsPage'

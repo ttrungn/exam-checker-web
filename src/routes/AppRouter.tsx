@@ -2,7 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { AppLayout, ProtectedRoute } from '../components'
 import MSALRedirect from '../components/Auth/MSALRedirect'
-import { AnalyticsPage, ExamsPage, SemestersPage, SettingsPage } from '../pages'
+import { DashboardPage, ExamsPage, SettingsPage } from '../pages'
 import NotFound from '../pages/Errors/NotFound'
 
 const AppRouter: React.FC = () => {
@@ -16,8 +16,7 @@ const AppRouter: React.FC = () => {
             </ProtectedRoute>
           }
         >
-          <Route path='/' element={<AnalyticsPage />} />
-          <Route path='/analytics' element={<AnalyticsPage />} />
+          <Route path='/' element={<DashboardPage />} />
           <Route path='/exams' element={<ExamsPage />} />
           <Route path='/semesters' element={<SemestersPage />} />
           <Route path='/settings' element={<SettingsPage />} />

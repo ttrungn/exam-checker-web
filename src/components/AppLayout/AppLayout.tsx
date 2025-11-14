@@ -7,7 +7,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { MenuProps } from 'antd'
 import { Avatar, Button, Dropdown, Layout, Menu, Space, theme, Typography } from 'antd'
 
-import type { Role } from '../../constants/auth'
+import { type Role, Roles } from '../../constants/auth'
 import { SIDEBAR_ITEMS, USER_MENU_ITEMS } from '../../constants/layout'
 import { fetchUserProfile } from '../../features/user/userThunk'
 import { useAppDispatch, useAppSelector } from '../../hooks/customReduxHooks'
@@ -33,18 +33,15 @@ const AppLayout: React.FC = () => {
     }
   }, [profile, dispatch, isLoading])
 
-  const userRoleValues = useMemo(
-    () => (profile?.roles ?? []).map((r) => r.value).filter((v): v is Role => !!v),
-    [profile?.roles]
-  )
+  const userRoleValues = useMemo(() => {
+    const roles = (profile?.roles ?? []).map((r) => r.value).filter((v): v is Role => !!v)
+    return roles
+  }, [profile?.roles])
 
   const sidebarItems = useMemo<MenuProps['items']>(() => {
-    if (userRoleValues.length === 0) return []
     return SIDEBAR_ITEMS.map((item) => {
-      if (!item.roles.some((r) => userRoleValues.includes(r))) {
-        return {
-          key: 'notfound'
-        }
+      if (!item.roles.some((r) => r === Roles.ALL || userRoleValues.includes(r))) {
+        return null
       }
       return {
         ...item,
@@ -52,16 +49,13 @@ const AppLayout: React.FC = () => {
         icon: React.createElement(item.icon),
         label: item.label
       }
-    })
+    }).filter(Boolean)
   }, [userRoleValues])
 
   const userMenuItems = useMemo<MenuProps['items']>(() => {
-    if (userRoleValues.length === 0) return []
     return USER_MENU_ITEMS.map((item) => {
-      if (!item.roles.some((r) => userRoleValues.includes(r))) {
-        return {
-          key: 'notfound'
-        }
+      if (!item.roles.some((r) => r === Roles.ALL || userRoleValues.includes(r))) {
+        return null
       }
       return {
         ...item,
@@ -69,7 +63,7 @@ const AppLayout: React.FC = () => {
         icon: React.createElement(item.icon),
         label: item.label
       }
-    })
+    }).filter(Boolean)
   }, [userRoleValues])
 
   const handleLogoutRedirect = () => {
