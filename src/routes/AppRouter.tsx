@@ -2,7 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { AppLayout, ProtectedRoute } from '../components'
 import MSALRedirect from '../components/Auth/MSALRedirect'
-import { DashboardPage, ExamsPage, SettingsPage } from '../pages'
+import { DashboardPage, ExamsPage, SemestersPage, SettingsPage } from '../pages'
 import NotFound from '../pages/Errors/NotFound'
 
 const AppRouter: React.FC = () => {

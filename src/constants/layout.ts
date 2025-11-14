@@ -19,11 +19,11 @@ export type NavItem = {
 }
 
 export const SIDEBAR_ITEMS: NavItem[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: DashboardOutlined, roles: [Roles.ADMIN] },
+  { key: '', label: 'Bảng phân tích', icon: DashboardOutlined, roles: [Roles.ADMIN] },
   // { key: 'manager-user', label: 'Quản lý người dùng', icon: UserOutlined, roles: [Roles.ADMIN] },
-  { key: 'exams', label: 'Exams', icon: FileTextOutlined, roles: [Roles.ADMIN] },
-  { key: 'semesters', label: 'Semesters', icon: CalendarOutlined, roles: [Roles.ADMIN] },
-  { key: 'settings', label: 'Settings', icon: SettingOutlined, roles: [Roles.ADMIN] }
+  { key: 'exams', label: 'Quản lý bài thi', icon: FileTextOutlined, roles: [Roles.ADMIN] },
+  { key: 'semesters', label: 'Quản lý học kỳ', icon: CalendarOutlined, roles: [Roles.ADMIN] },
+  { key: 'settings', label: 'Cài đặt', icon: SettingOutlined, roles: [Roles.ADMIN] }
 ]
 
 export const USER_MENU_ITEMS: NavItem[] = [
