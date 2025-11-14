@@ -1,4 +1,11 @@
-import { DashboardOutlined, FileTextOutlined, LogoutOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons'
+import {
+  CalendarOutlined,
+  DashboardOutlined,
+  FileTextOutlined,
+  LogoutOutlined,
+  SettingOutlined,
+  UserOutlined
+} from '@ant-design/icons'
 
 import { type Role, Roles } from './auth'
 
@@ -14,6 +21,7 @@ export type NavItem = {
 export const SIDEBAR_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: DashboardOutlined, roles: [Roles.ADMIN] },
   { key: 'exams', label: 'Exams', icon: FileTextOutlined, roles: [Roles.ADMIN] },
+  { key: 'semesters', label: 'Semesters', icon: CalendarOutlined, roles: [Roles.ADMIN] },
   { key: 'settings', label: 'Settings', icon: SettingOutlined, roles: [Roles.ADMIN] }
 ]
 
