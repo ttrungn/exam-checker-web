@@ -112,3 +112,21 @@ export const getAccounts = async (params: GetAccountsParams = {}): Promise<GetAc
   const response = await api.get<GetAccountsResponse>(url)
   return response.data
 }
+
+export const getExaminers = async (email?: string): Promise<GetAccountsResponse> => {
+  const searchParams = new URLSearchParams()
+
+  searchParams.append('pageIndex', '1')
+  searchParams.append('pageSize', '50')
+  searchParams.append('indexFrom', '1')
+
+  if (email) {
+    searchParams.append('email', email)
+  }
+
+  const queryString = searchParams.toString()
+  const url = `/v1/accounts/examiners?${queryString}`
+
+  const response = await api.get<GetAccountsResponse>(url)
+  return response.data
+}
