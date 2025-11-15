@@ -27,7 +27,7 @@ export const SIDEBAR_ITEMS: NavItem[] = [
 ]
 
 export const USER_MENU_ITEMS: NavItem[] = [
-  { key: 'profile', label: 'Profile', icon: UserOutlined, roles: [Roles.ALL] },
-  { key: 'settings', label: 'Settings', icon: SettingOutlined, roles: [Roles.ALL] },
-  { key: 'logout', label: 'Logout', icon: LogoutOutlined, danger: true, roles: [Roles.ALL] }
+  { key: 'profile', label: 'Hồ sơ cá nhân', icon: UserOutlined, roles: [Roles.ALL] },
+  { key: 'settings', label: 'Cài đặt', icon: SettingOutlined, roles: [Roles.ALL] },
+  { key: 'logout', label: 'Đăng xuất', icon: LogoutOutlined, danger: true, roles: [Roles.ALL] }
 ]
