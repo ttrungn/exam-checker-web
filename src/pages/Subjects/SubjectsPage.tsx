@@ -1,5 +1,4 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
-import dayjs from 'dayjs'
 
 import React, { useCallback, useState } from 'react'
 
@@ -7,7 +6,6 @@ import {
   Button,
   Card,
   Col,
-  DatePicker,
   Descriptions,
   Form,
   Input,
@@ -23,14 +21,13 @@ import {
 
 import api from '../../apis/apiClient'
 import type { ApiResponse, PaginationResponse } from '../../types/api.dto'
-import type { Exam, ExamDetail } from '../../types/exam.dto'
 import type { Semester } from '../../types/semester.dto'
+import type { Subject, SubjectDetail } from '../../types/subject.dto'
 
 const { Title } = Typography
-const { RangePicker } = DatePicker
 
-const ExamsPage: React.FC = () => {
-  const [exams, setExams] = useState<Exam[]>([])
+const SubjectsPage: React.FC = () => {
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [semesters, setSemesters] = useState<Semester[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({
@@ -40,12 +37,13 @@ const ExamsPage: React.FC = () => {
   })
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false)
-  const [selectedExam, setSelectedExam] = useState<ExamDetail | null>(null)
+  const [selectedSubject, setSelectedSubject] = useState<SubjectDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [isEdit, setIsEdit] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form] = Form.useForm()
   const [searchForm] = Form.useForm()
+  const [searchName, setSearchName] = useState('')
   const [searchCode, setSearchCode] = useState('')
   const [searchStatus, setSearchStatus] = useState<boolean | null>(true)
 
@@ -65,8 +63,8 @@ const ExamsPage: React.FC = () => {
     }
   }, [messageApi])
 
-  const fetchExams = useCallback(
-    async (pageIndex = 1, pageSize = 8, code = '', status: boolean | null = null) => {
+  const fetchSubjects = useCallback(
+    async (pageIndex = 1, pageSize = 8, name = '', code = '', status: boolean | null = null) => {
       setLoading(true)
       try {
         const params: any = {
@@ -74,23 +72,24 @@ const ExamsPage: React.FC = () => {
           pageSize: pageSize
         }
 
+        if (name) params.name = name
         if (code) params.code = code
         if (status !== null) params.isActive = status
 
-        const response = await api.get<PaginationResponse<Exam>>('/api/v1/exams', { params })
+        const response = await api.get<PaginationResponse<Subject>>('/api/v1/subjects', { params })
 
         if (response.data.success) {
-          setExams(response.data.data)
+          setSubjects(response.data.data)
           setPagination({
             pageIndex: response.data.pageIndex,
             pageSize: response.data.pageSize,
             total: response.data.totalCount
           })
         } else {
-          messageApi.error(response.data.message || 'Không thể tải danh sách kỳ thi')
+          messageApi.error(response.data.message || 'Không thể tải danh sách môn học')
         }
       } catch {
-        messageApi.error('Lỗi khi tải danh sách kỳ thi')
+        messageApi.error('Lỗi khi tải danh sách môn học')
       } finally {
         setLoading(false)
       }
@@ -100,66 +99,69 @@ const ExamsPage: React.FC = () => {
 
   React.useEffect(() => {
     fetchSemesters()
-    fetchExams(1, 8, '', true)
-  }, [fetchSemesters, fetchExams])
+    fetchSubjects(1, 8, '', '', true)
+  }, [fetchSemesters, fetchSubjects])
 
   const handleTableChange = (page: number, pageSize: number) => {
-    fetchExams(page, pageSize, searchCode, searchStatus)
+    fetchSubjects(page, pageSize, searchName, searchCode, searchStatus)
   }
 
   const handleSearch = (values: any) => {
+    const name = values.name || ''
     const code = values.code || ''
     const status = values.isActive ?? null
+    setSearchName(name)
     setSearchCode(code)
     setSearchStatus(status)
-    fetchExams(1, 8, code, status)
+    fetchSubjects(1, 8, name, code, status)
   }
 
   const handleResetSearch = () => {
     searchForm.resetFields()
+    setSearchName('')
     setSearchCode('')
     setSearchStatus(true)
-    fetchExams(1, 8, '', true)
+    fetchSubjects(1, 8, '', '', true)
   }
 
   const handleViewDetail = async (id: string) => {
     setDetailLoading(true)
     setIsDetailModalVisible(true)
     try {
-      const response = await api.get<ApiResponse<ExamDetail>>(`/api/v1/exams/${id}`)
+      const response = await api.get<ApiResponse<SubjectDetail>>(`/api/v1/subjects/${id}`)
       if (response.data.success) {
-        setSelectedExam(response.data.data)
+        setSelectedSubject(response.data.data)
       } else {
-        messageApi.error(response.data.message || 'Không thể tải thông tin kỳ thi')
+        messageApi.error(response.data.message || 'Không thể tải thông tin môn học')
       }
     } catch {
-      messageApi.error('Lỗi khi tải thông tin kỳ thi')
+      messageApi.error('Lỗi khi tải thông tin môn học')
     } finally {
       setDetailLoading(false)
     }
   }
 
   const handleEdit = useCallback(
-    async (exam: Exam) => {
+    async (subject: Subject) => {
       setIsEdit(true)
-      setEditingId(exam.id)
+      setEditingId(subject.id)
 
       // Fetch chi tiết để có đầy đủ thông tin
       try {
-        const response = await api.get<ApiResponse<ExamDetail>>(`/api/v1/exams/${exam.id}`)
+        const response = await api.get<ApiResponse<SubjectDetail>>(`/api/v1/subjects/${subject.id}`)
         if (response.data.success) {
           const detail = response.data.data
           form.setFieldsValue({
-            semesterId: detail.semester.id,
+            name: detail.name,
             code: detail.code,
-            dateRange: [dayjs(detail.startDate), dayjs(detail.endDate)]
+            semesterId: detail.semester.id
           })
           setIsModalVisible(true)
         } else {
-          messageApi.error(response.data.message || 'Không thể tải thông tin kỳ thi')
+          messageApi.error(response.data.message || 'Không thể tải thông tin môn học')
         }
       } catch {
-        messageApi.error('Lỗi khi tải thông tin kỳ thi')
+        messageApi.error('Lỗi khi tải thông tin môn học')
       }
     },
     [form, messageApi]
@@ -167,23 +169,24 @@ const ExamsPage: React.FC = () => {
 
   const handleDelete = (id: string) => {
     modal.confirm({
-      title: 'Xóa Kỳ Thi',
-      content: 'Bạn có chắc muốn xóa kỳ thi này?',
+      title: 'Xóa Môn Học',
+      content: 'Bạn có chắc muốn xóa môn học này?',
       okText: 'Xóa',
       cancelText: 'Hủy',
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await api.delete(`/api/v1/exams/${id}`)
+          await api.delete(`/api/v1/subjects/${id}`)
           messageApi.success({
-            content: 'Xóa kỳ thi thành công!',
+            content: 'Xóa môn học thành công!',
             duration: 3
           })
+          setSearchName('')
           setSearchCode('')
           setSearchStatus(true)
-          fetchExams(1, 8, '', true)
+          fetchSubjects(1, 8, '', '', true)
         } catch (error: any) {
-          const errorMessage = error?.response?.data?.message || 'Không thể xóa kỳ thi. Vui lòng thử lại!'
+          const errorMessage = error?.response?.data?.message || 'Không thể xóa môn học. Vui lòng thử lại!'
           messageApi.error({
             content: errorMessage,
             duration: 4
@@ -207,36 +210,37 @@ const ExamsPage: React.FC = () => {
 
   const handleModalSubmit = async (values: any) => {
     try {
-      const [startDate, endDate] = values.dateRange
-      const payload = {
-        semesterId: values.semesterId,
-        code: values.code,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
-      }
-
       if (isEdit && editingId) {
-        await api.put(`/api/v1/exams/${editingId}`, payload)
+        await api.put(`/api/v1/subjects/${editingId}`, {
+          semesterId: values.semesterId,
+          name: values.name,
+          code: values.code
+        })
         messageApi.success({
-          content: 'Cập nhật kỳ thi thành công!',
+          content: 'Cập nhật môn học thành công!',
           duration: 3
         })
       } else {
-        await api.post('/api/v1/exams', payload)
+        await api.post('/api/v1/subjects', {
+          semesterId: values.semesterId,
+          name: values.name,
+          code: values.code
+        })
         messageApi.success({
-          content: 'Tạo kỳ thi mới thành công!',
+          content: 'Tạo môn học mới thành công!',
           duration: 3
         })
       }
       setIsModalVisible(false)
       form.resetFields()
+      setSearchName('')
       setSearchCode('')
       setSearchStatus(true)
-      fetchExams(1, 8, '', true)
+      fetchSubjects(1, 8, '', '', true)
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
-        (isEdit ? 'Không thể cập nhật kỳ thi. Vui lòng thử lại!' : 'Không thể tạo kỳ thi. Vui lòng thử lại!')
+        (isEdit ? 'Không thể cập nhật môn học. Vui lòng thử lại!' : 'Không thể tạo môn học. Vui lòng thử lại!')
       messageApi.error({
         content: errorMessage,
         duration: 4
@@ -246,21 +250,14 @@ const ExamsPage: React.FC = () => {
 
   const columns = [
     {
-      title: 'Mã Kỳ Thi',
+      title: 'Tên Môn Học',
+      dataIndex: 'name',
+      key: 'name'
+    },
+    {
+      title: 'Mã Môn Học',
       dataIndex: 'code',
       key: 'code'
-    },
-    {
-      title: 'Ngày Bắt Đầu',
-      dataIndex: 'startDate',
-      key: 'startDate',
-      render: (date: string) => new Date(date).toLocaleDateString('vi-VN')
-    },
-    {
-      title: 'Ngày Kết Thúc',
-      dataIndex: 'endDate',
-      key: 'endDate',
-      render: (date: string) => new Date(date).toLocaleDateString('vi-VN')
     },
     {
       title: 'Trạng Thái',
@@ -284,7 +281,7 @@ const ExamsPage: React.FC = () => {
     {
       title: 'Hành Động',
       key: 'actions',
-      render: (_: any, record: Exam) => (
+      render: (_: any, record: Subject) => (
         <Space size='middle'>
           <Button size='small' icon={<EyeOutlined />} onClick={() => handleViewDetail(record.id)} />
           <Button size='small' icon={<EditOutlined />} onClick={() => handleEdit(record)} />
@@ -306,21 +303,26 @@ const ExamsPage: React.FC = () => {
           marginBottom: 24
         }}
       >
-        <Title level={2}>Quản Lý Kỳ Thi</Title>
+        <Title level={2}>Quản Lý Môn Học</Title>
         <Button type='primary' icon={<PlusOutlined />} onClick={handleOpenModal}>
-          Thêm Kỳ Thi Mới
+          Thêm Môn Học Mới
         </Button>
       </div>
 
       <Card style={{ marginBottom: 16 }}>
         <Form form={searchForm} layout='vertical' onFinish={handleSearch}>
           <Row gutter={16}>
-            <Col xs={24} sm={12} md={8}>
-              <Form.Item label='Mã Kỳ Thi' name='code'>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item label='Tên Môn Học' name='name'>
+                <Input placeholder='Tìm kiếm theo tên...' />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item label='Mã Môn Học' name='code'>
                 <Input placeholder='Tìm kiếm theo mã...' />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={8}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item label='Trạng Thái' name='isActive'>
                 <Select
                   placeholder='Chọn trạng thái'
@@ -332,7 +334,7 @@ const ExamsPage: React.FC = () => {
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={8}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item label=' ' style={{ marginBottom: 0 }}>
                 <Space>
                   <Button type='primary' htmlType='submit'>
@@ -349,7 +351,7 @@ const ExamsPage: React.FC = () => {
       <Card loading={loading}>
         <Table
           columns={columns}
-          dataSource={exams.map((e) => ({ ...e, key: e.id }))}
+          dataSource={subjects.map((s) => ({ ...s, key: s.id }))}
           pagination={{
             total: pagination.total,
             pageSize: pagination.pageSize,
@@ -363,7 +365,7 @@ const ExamsPage: React.FC = () => {
       </Card>
 
       <Modal
-        title={isEdit ? 'Sửa Kỳ Thi' : 'Thêm Kỳ Thi Mới'}
+        title={isEdit ? 'Sửa Môn Học' : 'Thêm Môn Học Mới'}
         open={isModalVisible}
         onCancel={handleModalCancel}
         footer={null}
@@ -379,21 +381,12 @@ const ExamsPage: React.FC = () => {
             />
           </Form.Item>
 
-          <Form.Item label='Mã Kỳ Thi' name='code' rules={[{ required: true, message: 'Vui lòng nhập mã kỳ thi' }]}>
-            <Input placeholder='VD: SPRING25' />
+          <Form.Item label='Tên Môn Học' name='name' rules={[{ required: true, message: 'Vui lòng nhập tên môn học' }]}>
+            <Input placeholder='VD: Lập trình Web' />
           </Form.Item>
 
-          <Form.Item
-            label='Thời Gian Thi'
-            name='dateRange'
-            rules={[{ required: true, message: 'Vui lòng chọn thời gian thi' }]}
-          >
-            <RangePicker
-              style={{ width: '100%' }}
-              format='DD/MM/YYYY'
-              placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
-              separator='→'
-            />
+          <Form.Item label='Mã Môn Học' name='code' rules={[{ required: true, message: 'Vui lòng nhập mã môn học' }]}>
+            <Input placeholder='VD: PRN232' />
           </Form.Item>
 
           <Form.Item>
@@ -408,7 +401,7 @@ const ExamsPage: React.FC = () => {
       </Modal>
 
       <Modal
-        title='Chi Tiết Kỳ Thi'
+        title='Chi Tiết Môn Học'
         open={isDetailModalVisible}
         onCancel={() => setIsDetailModalVisible(false)}
         footer={[
@@ -420,27 +413,22 @@ const ExamsPage: React.FC = () => {
       >
         {detailLoading ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>Đang tải...</div>
-        ) : selectedExam ? (
+        ) : selectedSubject ? (
           <Descriptions bordered column={1}>
-            <Descriptions.Item label='Mã Kỳ Thi'>{selectedExam.code}</Descriptions.Item>
-            <Descriptions.Item label='Học Kỳ'>{selectedExam.semester.name}</Descriptions.Item>
-            <Descriptions.Item label='Ngày Bắt Đầu'>
-              {new Date(selectedExam.startDate).toLocaleString('vi-VN')}
-            </Descriptions.Item>
-            <Descriptions.Item label='Ngày Kết Thúc'>
-              {new Date(selectedExam.endDate).toLocaleString('vi-VN')}
-            </Descriptions.Item>
+            <Descriptions.Item label='Tên Môn Học'>{selectedSubject.name}</Descriptions.Item>
+            <Descriptions.Item label='Mã Môn Học'>{selectedSubject.code}</Descriptions.Item>
+            <Descriptions.Item label='Học Kỳ'>{selectedSubject.semester.name}</Descriptions.Item>
             <Descriptions.Item label='Trạng Thái'>
-              {selectedExam.isActive ? <Tag color='green'>Hoạt Động</Tag> : <Tag color='red'>Không Hoạt Động</Tag>}
+              {selectedSubject.isActive ? <Tag color='green'>Hoạt Động</Tag> : <Tag color='red'>Không Hoạt Động</Tag>}
             </Descriptions.Item>
             <Descriptions.Item label='Ngày Tạo'>
-              {new Date(selectedExam.createdAt).toLocaleString('vi-VN')}
+              {new Date(selectedSubject.createdAt).toLocaleString('vi-VN')}
             </Descriptions.Item>
             <Descriptions.Item label='Ngày Cập Nhật'>
-              {new Date(selectedExam.updatedAt).toLocaleString('vi-VN')}
+              {new Date(selectedSubject.updatedAt).toLocaleString('vi-VN')}
             </Descriptions.Item>
             <Descriptions.Item label='Trạng Thái Học Kỳ'>
-              {selectedExam.semester.isActive ? (
+              {selectedSubject.semester.isActive ? (
                 <Tag color='green'>Hoạt Động</Tag>
               ) : (
                 <Tag color='red'>Không Hoạt Động</Tag>
@@ -453,4 +441,4 @@ const ExamsPage: React.FC = () => {
   )
 }
 
-export default ExamsPage
+export default SubjectsPage

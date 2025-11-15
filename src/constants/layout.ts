@@ -1,11 +1,12 @@
 import {
+  BookOutlined,
   CalendarOutlined,
   DashboardOutlined,
+  FileSearchOutlined,
   FileTextOutlined,
   LogoutOutlined,
   SettingOutlined,
-  UserOutlined,
-  FileSearchOutlined
+  UserOutlined
 } from '@ant-design/icons'
 
 import { type Role, Roles } from './auth'
@@ -26,6 +27,7 @@ export const SIDEBAR_ITEMS: NavItem[] = [
   { key: 'my-submissions', label: 'Bài cần chấm điểm', icon: FileTextOutlined, roles: [Roles.EXAMINER] },
   { key: 'exams', label: 'Quản lý bài thi', icon: FileTextOutlined, roles: [Roles.ADMIN] },
   { key: 'semesters', label: 'Quản lý học kỳ', icon: CalendarOutlined, roles: [Roles.ADMIN] },
+  { key: 'subjects', label: 'Quản lý môn học', icon: BookOutlined, roles: [Roles.ADMIN] },
   { key: 'settings', label: 'Cài đặt', icon: SettingOutlined, roles: [Roles.ADMIN] }
 ]
 
