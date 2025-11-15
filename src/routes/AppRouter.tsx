@@ -2,7 +2,15 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { AppLayout, ProtectedRoute } from '../components'
 import MSALRedirect from '../components/Auth/MSALRedirect'
-import { DashboardPage, ExamsPage, MySubmissionsPage, SemestersPage, SettingsPage, SubmissionsPage } from '../pages'
+import {
+  DashboardPage,
+  ExamsPage,
+  MySubmissionsPage,
+  SemestersPage,
+  SettingsPage,
+  SubjectsPage,
+  SubmissionsPage
+} from '../pages'
 import NotFound from '../pages/Errors/NotFound'
 import { UsersPage } from '../pages/Users'
 
@@ -23,6 +31,7 @@ const AppRouter: React.FC = () => {
           <Route path='/my-submissions' element={<MySubmissionsPage />} />
           <Route path='/exams' element={<ExamsPage />} />
           <Route path='/semesters' element={<SemestersPage />} />
+          <Route path='/subjects' element={<SubjectsPage />} />
           <Route path='/settings' element={<SettingsPage />} />
         </Route>
         <Route path='/login-redirect' element={<MSALRedirect />} />
