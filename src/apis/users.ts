@@ -69,18 +69,18 @@ export interface AssignRoleParams {
 export type AssignRoleResponse = ApiResponse<any>
 
 export const getAppRoles = async (): Promise<GetAppRolesResponse> => {
-  const response = await api.get<GetAppRolesResponse>('/v1/accounts/roles')
+  const response = await api.get<GetAppRolesResponse>('/api/v1/accounts/roles')
   return response.data
 }
 
 export const createAccount = async (params: CreateAccountParams): Promise<CreateAccountResponse> => {
-  const response = await api.post<CreateAccountResponse>('/v1/accounts', params)
+  const response = await api.post<CreateAccountResponse>('/api/v1/accounts', params)
   return response.data
 }
 
 export const assignRoleToUser = async (params: AssignRoleParams): Promise<AssignRoleResponse> => {
   const { userId, appRoleId } = params
-  const response = await api.post<AssignRoleResponse>(`/v1/accounts/${userId}/roles/${appRoleId}`)
+  const response = await api.post<AssignRoleResponse>(`/api/v1/accounts/${userId}/roles/${appRoleId}`)
   return response.data
 }
 
@@ -107,7 +107,7 @@ export const getAccounts = async (params: GetAccountsParams = {}): Promise<GetAc
   }
 
   const queryString = searchParams.toString()
-  const url = queryString ? `/v1/accounts?${queryString}` : '/v1/accounts'
+  const url = queryString ? `/api/v1/accounts?${queryString}` : '/api/v1/accounts'
 
   const response = await api.get<GetAccountsResponse>(url)
   return response.data
