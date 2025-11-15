@@ -5,7 +5,8 @@ import React, { useCallback, useState } from 'react'
 import { Button, Card, Col, Form, Input, message, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
 
 import api from '../../apis/apiClient'
-import type { Semester, SemesterPaginationResponse } from '../../types/semester.dto'
+import type { PaginationResponse } from '../../types/api.dto'
+import type { Semester } from '../../types/semester.dto'
 
 const { Title } = Typography
 
@@ -40,7 +41,7 @@ const SemestersPage: React.FC = () => {
         if (name) params.name = name
         if (status !== null) params.isActive = status
 
-        const response = await api.get<SemesterPaginationResponse>('/api/v1/semesters', { params })
+        const response = await api.get<PaginationResponse<Semester>>('/api/v1/semesters', { params })
 
         if (response.data.success) {
           setSemesters(response.data.data)
