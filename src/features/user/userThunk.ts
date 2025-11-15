@@ -13,7 +13,7 @@ export const fetchUserProfile = createAsyncThunk<UserProfileDto>(
   'userProfile/fetch',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get<FetchUserProfileResponse>('/v1/accounts/profile')
+      const res = await api.get<FetchUserProfileResponse>('/api/v1/accounts/profile')
 
       if (res.status !== 200 || !res.data.success) {
         return rejectWithValue(res.data.message || 'Failed to fetch user profile')
