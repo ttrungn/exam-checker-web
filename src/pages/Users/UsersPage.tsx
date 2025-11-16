@@ -7,6 +7,7 @@ import {
   Card,
   Col,
   DatePicker,
+  Divider,
   Form,
   Input,
   message,
@@ -142,6 +143,7 @@ const UsersPage: React.FC = () => {
     try {
       await createAccount({
         email: values.email,
+        userPrincipalName: `${values.userPrincipalName}@entiti832004outlook.onmicrosoft.com`,
         displayName: values.displayName,
         initialPassword: values.initialPassword,
         givenName: values.givenName,
@@ -237,9 +239,9 @@ const UsersPage: React.FC = () => {
       key: 'displayName'
     },
     {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email'
+      title: 'Tên đăng nhập',
+      dataIndex: 'userPrincipalName',
+      key: 'userPrincipalName'
     },
     {
       title: 'Họ',
@@ -397,6 +399,23 @@ const UsersPage: React.FC = () => {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
+                label='Tên'
+                name='surname'
+                rules={[
+                  { required: true, message: 'Vui lòng nhập tên' },
+                  { min: 1, message: 'Tên phải có ít nhất 1 ký tự' },
+                  { max: 30, message: 'Tên không được quá 30 ký tự' },
+                  {
+                    pattern: /^[a-zA-ZÀ-ỹ\s]+$/,
+                    message: 'Tên chỉ được chứa chữ cái và khoảng trắng'
+                  }
+                ]}
+              >
+                <Input placeholder='Tên' />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
                 label='Họ'
                 name='givenName'
                 rules={[
@@ -412,21 +431,26 @@ const UsersPage: React.FC = () => {
                 <Input placeholder='Họ' />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item
-                label='Tên'
-                name='surname'
-                rules={[
-                  { required: true, message: 'Vui lòng nhập tên' },
-                  { min: 1, message: 'Tên phải có ít nhất 1 ký tự' },
-                  { max: 30, message: 'Tên không được quá 30 ký tự' },
-                  {
-                    pattern: /^[a-zA-ZÀ-ỹ\s]+$/,
-                    message: 'Tên chỉ được chứa chữ cái và khoảng trắng'
-                  }
-                ]}
-              >
-                <Input placeholder='Tên' />
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label='Tên đăng nhập' required>
+                <Input.Group compact>
+                  <Form.Item
+                    name='userPrincipalName'
+                    style={{ width: '30%', marginBottom: 0 }}
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập tên đăng nhập' },
+                      { min: 3, message: 'Tên đăng nhập phải có ít nhất 3 ký tự' },
+                      { max: 50, message: 'Tên đăng nhập không được quá 50 ký tự' }
+                    ]}
+                  >
+                    <Input placeholder='username' />
+                  </Form.Item>
+                  <Input style={{ width: '10%', textAlign: 'center' }} value='@' disabled />
+                  <Input style={{ width: '60%' }} value='entiti832004outlook.onmicrosoft.com' disabled />
+                </Input.Group>
               </Form.Item>
             </Col>
           </Row>
@@ -505,23 +529,61 @@ const UsersPage: React.FC = () => {
         open={isEditModalVisible}
         onCancel={handleEditModalCancel}
         footer={null}
-        width={600}
+        width={800}
       >
         {editingUser && (
-          <div style={{ marginBottom: 16 }}>
-            <p>
-              <strong>Email:</strong> {editingUser.email}
-            </p>
-            <p>
-              <strong>Tên hiển thị:</strong> {editingUser.displayName}
-            </p>
-            <p>
-              <strong>Họ tên:</strong> {editingUser.givenName} {editingUser.surname}
-            </p>
-            <p>
-              <strong>Vai trò hiện tại:</strong>{' '}
-              {editingUser.roles.length > 0 ? editingUser.roles.join(', ') : 'Chưa có vai trò'}
-            </p>
+          <div style={{ marginBottom: 24 }}>
+            <Divider orientation='left'>Thông tin người dùng</Divider>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <p>
+                  <strong>Email:</strong> {editingUser.email}
+                </p>
+              </Col>
+              <Col span={12}>
+                <p>
+                  <strong>Tên hiển thị:</strong> {editingUser.displayName}
+                </p>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <p>
+                  <strong>Tên:</strong> {editingUser.surname}
+                </p>
+              </Col>
+              <Col span={12}>
+                <p>
+                  <strong>Họ:</strong> {editingUser.givenName}
+                </p>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <p>
+                  <strong>Tên đăng nhập:</strong> {editingUser.userPrincipalName}
+                </p>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <p>
+                  <strong>Số điện thoại:</strong> {(editingUser as any).mobilePhone || 'Chưa có thông tin'}
+                </p>
+              </Col>
+              <Col span={12}>
+                <p>
+                  <strong>Vai trò hiện tại:</strong>{' '}
+                  {editingUser.roles.length > 0 ? editingUser.roles.join(', ') : 'Chưa có vai trò'}
+                </p>
+              </Col>
+            </Row>
+
+            <Divider orientation='left'>Phân quyền</Divider>
           </div>
         )}
 
