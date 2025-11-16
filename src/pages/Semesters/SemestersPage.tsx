@@ -5,7 +5,8 @@ import React, { useCallback, useState } from 'react'
 import { Button, Card, Col, Form, Input, message, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
 
 import api from '../../apis/apiClient'
-import type { Semester, SemesterPaginationResponse } from '../../types/semester.dto'
+import type { PaginationResponse } from '../../types/api.dto'
+import type { Semester } from '../../types/semester.dto'
 
 const { Title } = Typography
 
@@ -40,7 +41,7 @@ const SemestersPage: React.FC = () => {
         if (name) params.name = name
         if (status !== null) params.isActive = status
 
-        const response = await api.get<SemesterPaginationResponse>('/v1/semesters', { params })
+        const response = await api.get<PaginationResponse<Semester>>('/api/v1/semesters', { params })
 
         if (response.data.success) {
           setSemesters(response.data.data)
@@ -105,7 +106,7 @@ const SemestersPage: React.FC = () => {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await api.delete(`/v1/semesters/${id}`)
+          await api.delete(`/api/v1/semesters/${id}`)
           messageApi.success({
             content: 'Xóa học kỳ thành công!',
             duration: 3
@@ -139,7 +140,7 @@ const SemestersPage: React.FC = () => {
   const handleModalSubmit = async (values: any) => {
     try {
       if (isEdit && editingId) {
-        await api.put(`/v1/semesters/${editingId}`, {
+        await api.put(`/api/v1/semesters/${editingId}`, {
           name: values.name
         })
         messageApi.success({
@@ -147,7 +148,7 @@ const SemestersPage: React.FC = () => {
           duration: 3
         })
       } else {
-        await api.post('/v1/semesters', {
+        await api.post('/api/v1/semesters', {
           name: values.name
         })
         messageApi.success({
