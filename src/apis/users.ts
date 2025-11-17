@@ -50,6 +50,7 @@ export type GetAppRolesResponse = ApiResponse<PaginatedData<AppRole>>
 
 export interface CreateAccountParams {
   email: string
+  userPrincipalName: string
   displayName: string
   initialPassword: string
   givenName: string
