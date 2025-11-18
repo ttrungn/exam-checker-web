@@ -97,4 +97,12 @@ export const completeAssessment = async (
   return response.data
 }
 
+export const updateSubmissionToModeratorViolated = async (submissionId: string): Promise<void> => {
+  await api.put(`/api/v1/submissions/${submissionId}/to-moderator-violated`)
+}
+
+export const updateSubmissionToModeratorValidated = async (submissionId: string): Promise<void> => {
+  await api.put(`/api/v1/submissions/${submissionId}/to-moderator-validated`)
+}
+
 export type { GetSubmissionsParams, Submission, UserSubmission }

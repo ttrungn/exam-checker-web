@@ -1,9 +1,9 @@
-import { EyeOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
+import { CheckOutlined, CloseOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons'
+import { useMsal } from '@azure/msal-react'
 
 import React, { useCallback, useEffect, useState } from 'react'
 
 import {
-  AutoComplete,
   Button,
   Card,
   Col,
@@ -17,25 +17,23 @@ import {
   Space,
   Table,
   Tag,
-  Typography,
-  Upload
+  Typography
 } from 'antd'
-import type { UploadFile } from 'antd/es/upload/interface'
 
-import { importScoreStructure } from '../../apis/examSubjects'
 import {
-  createSubmission,
   getSubmissionById,
   getSubmissions,
   type GetSubmissionsParams,
-  type Submission
+  type Submission,
+  updateSubmissionToModeratorValidated,
+  updateSubmissionToModeratorViolated
 } from '../../apis/submissions'
-import { getExaminers, type UserAccount } from '../../apis/users'
 import { AssessmentStatus, GradeStatus, SubmissionStatus } from '../../types/submission.dto'
 
 const { Title } = Typography
 
-const SubmissionsPage: React.FC = () => {
+const ModeratorSubmissionsPage: React.FC = () => {
+  const { instance } = useMsal()
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({
@@ -44,17 +42,20 @@ const SubmissionsPage: React.FC = () => {
     total: 0
   })
   const [searchForm] = Form.useForm()
-  const [searchParams, setSearchParams] = useState<GetSubmissionsParams>({})
+  const account = instance.getActiveAccount()
+  const userPrincipalName = account?.username || ''
+  const [searchParams, setSearchParams] = useState<GetSubmissionsParams>({
+    status: SubmissionStatus.Violated,
+    moderatorName: userPrincipalName
+  })
   const [detailModalVisible, setDetailModalVisible] = useState(false)
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
-  const [uploadModalVisible, setUploadModalVisible] = useState(false)
-  const [uploadForm] = Form.useForm()
-  const [fileList, setFileList] = useState<UploadFile[]>([])
-  const [excelFileList, setExcelFileList] = useState<UploadFile[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [examiners, setExaminers] = useState<UserAccount[]>([])
-  const [examinerSearchLoading, setExaminerSearchLoading] = useState(false)
+  const [updateModalVisible, setUpdateModalVisible] = useState(false)
+  const [submissionToUpdate, setSubmissionToUpdate] = useState<Submission | null>(null)
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'validated' | 'violated' | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const [messageApi, messageContextHolder] = message.useMessage()
 
@@ -94,21 +95,23 @@ const SubmissionsPage: React.FC = () => {
   )
 
   useEffect(() => {
-    fetchSubmissions(1, 10, {})
-  }, [fetchSubmissions])
+    // Default to Violated status for moderator with current user as moderator
+    fetchSubmissions(1, 10, { status: SubmissionStatus.Violated, moderatorName: userPrincipalName })
+    searchForm.setFieldsValue({ status: SubmissionStatus.Violated, moderatorName: userPrincipalName })
+  }, [fetchSubmissions, searchForm, userPrincipalName])
 
   const handleTableChange = (page: number, pageSize: number) => {
     fetchSubmissions(page, pageSize, searchParams)
   }
 
   const handleSearch = (values: any) => {
-    const params: GetSubmissionsParams = {}
+    const params: GetSubmissionsParams = {
+      moderatorName: userPrincipalName // Always filter by current moderator
+    }
 
     if (values.examCode) params.examCode = values.examCode
     if (values.subjectCode) params.subjectCode = values.subjectCode
     if (values.status !== undefined && values.status !== null) params.status = values.status
-    if (values.examinerName) params.examinerName = values.examinerName
-    if (values.moderatorName) params.moderatorName = values.moderatorName
     if (values.submissionName) params.submissionName = values.submissionName
     if (values.gradeStatus !== undefined && values.gradeStatus !== null) params.gradeStatus = values.gradeStatus
 
@@ -118,8 +121,10 @@ const SubmissionsPage: React.FC = () => {
 
   const handleResetSearch = () => {
     searchForm.resetFields()
-    setSearchParams({})
-    fetchSubmissions(1, 10, {})
+    // Reset to default Violated status for moderator with current user as moderator
+    searchForm.setFieldsValue({ status: SubmissionStatus.Violated })
+    setSearchParams({ status: SubmissionStatus.Violated, moderatorName: userPrincipalName })
+    fetchSubmissions(1, 10, { status: SubmissionStatus.Violated, moderatorName: userPrincipalName })
   }
 
   const handleViewDetail = async (record: Submission) => {
@@ -148,106 +153,60 @@ const SubmissionsPage: React.FC = () => {
     setSelectedSubmission(null)
   }
 
-  const handleOpenUploadModal = async () => {
-    uploadForm.resetFields()
-    setFileList([])
-    setExcelFileList([])
-    setUploadModalVisible(true)
-    // Load initial examiners list
-    await handleSearchExaminers('')
+  const handleOpenUpdateModal = (record: Submission) => {
+    console.log('Opening update modal for:', record.id)
+    setSubmissionToUpdate(record)
+    setUpdateModalVisible(true)
   }
 
-  const handleCloseUploadModal = () => {
-    setUploadModalVisible(false)
-    uploadForm.resetFields()
-    setFileList([])
-    setExcelFileList([])
-    setExaminers([])
+  const handleCloseUpdateModal = () => {
+    setUpdateModalVisible(false)
+    setSubmissionToUpdate(null)
   }
 
-  const handleSearchExaminers = async (searchValue: string) => {
-    setExaminerSearchLoading(true)
-    try {
-      const response = await getExaminers(searchValue)
-      if (response.success) {
-        setExaminers(response.data.items)
-      }
-    } catch (error) {
-      console.error('Error fetching examiners:', error)
-    } finally {
-      setExaminerSearchLoading(false)
-    }
-  }
-
-  const handleUploadSubmit = async (values: any) => {
-    if (fileList.length === 0) {
-      messageApi.error('Vui lòng chọn file ZIP để upload')
+  const handleModeratorAction = (action: 'validated' | 'violated') => {
+    console.log('handleModeratorAction called with:', action)
+    if (!submissionToUpdate) {
+      console.log('No submission to update')
       return
     }
 
-    // Tìm examiner ID từ email được chọn
-    const selectedExaminer = examiners.find((e) => e.email === values.examinerId)
-    if (!selectedExaminer) {
-      messageApi.error('Không tìm thấy examiner. Vui lòng chọn lại!')
-      return
-    }
+    setPendingAction(action)
+    setConfirmModalVisible(true)
+  }
 
-    setUploading(true)
+  const handleConfirmAction = async () => {
+    if (!submissionToUpdate || !pendingAction) return
+
+    setIsProcessing(true)
+    const isValidated = pendingAction === 'validated'
+
     try {
-      // Upload ZIP file và tạo submission
-      const file = fileList[0].originFileObj as File
-      await createSubmission({
-        examinerId: selectedExaminer.id,
-        examSubjectId: values.examSubjectId,
-        zipFile: file
-      })
-
-      // Nếu có Excel file, upload score structure
-      if (excelFileList.length > 0) {
-        try {
-          const excelFile = excelFileList[0].originFileObj as File
-          await importScoreStructure(values.examSubjectId, excelFile)
-          messageApi.success('Upload file và phân công examiner thành công! Đã import tiêu chí chấm điểm.')
-        } catch (excelError: any) {
-          const excelErrorMessage =
-            excelError?.response?.data?.message ||
-            'Upload submission thành công nhưng lỗi khi import tiêu chí chấm điểm!'
-          messageApi.warning(excelErrorMessage)
-        }
+      console.log('Calling API for:', pendingAction, submissionToUpdate.id)
+      if (isValidated) {
+        await updateSubmissionToModeratorValidated(submissionToUpdate.id)
+        console.log('Validated successfully (204)')
+        messageApi.success('Đã cập nhật trạng thái: Xác thực không vi phạm')
       } else {
-        messageApi.success('Upload file và phân công examiner thành công!')
+        await updateSubmissionToModeratorViolated(submissionToUpdate.id)
+        console.log('Violated successfully (204)')
+        messageApi.success('Đã cập nhật trạng thái: Xác thực vi phạm')
       }
-
-      handleCloseUploadModal()
-      fetchSubmissions(1, 10, searchParams)
+      setConfirmModalVisible(false)
+      handleCloseUpdateModal()
+      fetchSubmissions(pagination.pageIndex, pagination.pageSize, searchParams)
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 'Lỗi khi upload file. Vui lòng thử lại!'
+      console.error('Error updating submission:', error)
+      const errorMessage = error?.response?.data?.message || error?.message || 'Lỗi khi cập nhật trạng thái'
       messageApi.error(errorMessage)
     } finally {
-      setUploading(false)
+      setIsProcessing(false)
+      setPendingAction(null)
     }
-  }
-
-  const handleFileChange = (info: any) => {
-    let newFileList = [...info.fileList]
-    // Chỉ giữ file mới nhất
-    newFileList = newFileList.slice(-1)
-    setFileList(newFileList)
-  }
-
-  const handleExcelFileChange = (info: any) => {
-    let newFileList = [...info.fileList]
-    // Chỉ giữ file mới nhất
-    newFileList = newFileList.slice(-1)
-    setExcelFileList(newFileList)
   }
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case SubmissionStatus.Processing:
-        return 'processing'
-      case SubmissionStatus.Validated:
-        return 'success'
       case SubmissionStatus.Violated:
         return 'error'
       case SubmissionStatus.Complained:
@@ -263,18 +222,14 @@ const SubmissionsPage: React.FC = () => {
 
   const getStatusText = (status: number) => {
     switch (status) {
-      case SubmissionStatus.Processing:
-        return 'Đang xử lý'
-      case SubmissionStatus.Validated:
-        return 'Đã xác thực'
       case SubmissionStatus.Violated:
         return 'Vi phạm'
       case SubmissionStatus.Complained:
         return 'Đã khiếu nại'
       case SubmissionStatus.ModeratorValidated:
-        return 'Moderator xác thực'
+        return 'Xác thực không vi phạm'
       case SubmissionStatus.ModeratorViolated:
-        return 'Moderator từ chối'
+        return 'Xác thực vi phạm'
       default:
         return `Trạng thái ${status}`
     }
@@ -345,12 +300,6 @@ const SubmissionsPage: React.FC = () => {
         <Tag color={getGradeStatusColor(gradeStatus)}>{getGradeStatusText(gradeStatus)}</Tag>
       )
     },
-    // {
-    //   title: 'Ngày phân công',
-    //   dataIndex: 'assignAt',
-    //   key: 'assignAt',
-    //   render: (date: string) => new Date(date).toLocaleString('vi-VN')
-    // },
     {
       title: 'File bài nộp',
       key: 'fileDownload',
@@ -368,9 +317,12 @@ const SubmissionsPage: React.FC = () => {
       title: 'Hành động',
       key: 'actions',
       render: (_: any, record: Submission) => (
-        <Space size='middle'>
+        <Space size='small'>
           <Button size='small' icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>
             Chi tiết
+          </Button>
+          <Button size='small' type='primary' onClick={() => handleOpenUpdateModal(record)}>
+            Cập nhật
           </Button>
         </Space>
       )
@@ -388,10 +340,7 @@ const SubmissionsPage: React.FC = () => {
           marginBottom: 24
         }}
       >
-        <Title level={2}>Quản lý bài nộp</Title>
-        <Button type='primary' icon={<PlusOutlined />} onClick={handleOpenUploadModal}>
-          Upload & Phân công
-        </Button>
+        <Title level={2}>Quản lý bài nộp (Moderator)</Title>
       </div>
 
       <Card style={{ marginBottom: 16 }}>
@@ -416,14 +365,11 @@ const SubmissionsPage: React.FC = () => {
               <Form.Item label='Trạng thái bài nộp' name='status'>
                 <Select
                   placeholder='Chọn trạng thái'
-                  allowClear
                   options={[
-                    { label: 'Đang xử lý', value: SubmissionStatus.Processing },
-                    { label: 'Đã xác thực', value: SubmissionStatus.Validated },
                     { label: 'Vi phạm', value: SubmissionStatus.Violated },
                     { label: 'Đã khiếu nại', value: SubmissionStatus.Complained },
-                    { label: 'Moderator xác thực', value: SubmissionStatus.ModeratorValidated },
-                    { label: 'Moderator từ chối', value: SubmissionStatus.ModeratorViolated }
+                    { label: 'Xác thực không vi phạm', value: SubmissionStatus.ModeratorValidated },
+                    { label: 'Xác thực vi phạm', value: SubmissionStatus.ModeratorViolated }
                   ]}
                 />
               </Form.Item>
@@ -507,7 +453,7 @@ const SubmissionsPage: React.FC = () => {
                 <Descriptions.Item label='Mã môn học' span={1}>
                   <Typography.Text strong>{selectedSubmission.subjectIdCode}</Typography.Text>
                 </Descriptions.Item>
-                <Descriptions.Item label='Tên bài nộp' span={1}>
+                <Descriptions.Item label='Tên bài nộp' span={2}>
                   <Typography.Text strong>
                     {selectedSubmission.assessments && selectedSubmission.assessments.length > 0
                       ? selectedSubmission.assessments[0].submissionName
@@ -515,7 +461,7 @@ const SubmissionsPage: React.FC = () => {
                   </Typography.Text>
                 </Descriptions.Item>
                 <Descriptions.Item label='Moderator' span={1}>
-                  {selectedSubmission.moderatorEmail || <Tag color='default'>Chưa tham gia</Tag>}
+                  {selectedSubmission.moderatorEmail || <Tag color='default'>Chưa phân</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label='Trạng thái bài nộp' span={1}>
                   <Tag color={getStatusColor(selectedSubmission.status)}>
@@ -525,6 +471,11 @@ const SubmissionsPage: React.FC = () => {
                 <Descriptions.Item label='Trạng thái chấm bài' span={1}>
                   <Tag color={getGradeStatusColor(selectedSubmission.gradeStatus)}>
                     {getGradeStatusText(selectedSubmission.gradeStatus)}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label='Trạng thái hoạt động' span={1}>
+                  <Tag color={selectedSubmission.isActive ? 'green' : 'red'}>
+                    {selectedSubmission.isActive ? 'Hoạt động' : 'Không hoạt động'}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label='Ngày phân công' span={2}>
@@ -602,76 +553,82 @@ const SubmissionsPage: React.FC = () => {
         ) : null}
       </Modal>
 
+      {/* Update Modal */}
       <Modal
-        title='Upload File & Phân công Examiner'
-        open={uploadModalVisible}
-        onCancel={handleCloseUploadModal}
+        title='Cập nhật trạng thái bài nộp'
+        open={updateModalVisible}
+        onCancel={handleCloseUpdateModal}
         footer={null}
-        width={600}
+        width={500}
       >
-        <Form form={uploadForm} layout='vertical' onFinish={handleUploadSubmit}>
-          <Form.Item
-            label='Exam Subject ID'
-            name='examSubjectId'
-            rules={[{ required: true, message: 'Vui lòng nhập Exam Subject ID' }]}
-          >
-            <Input placeholder='Nhập Exam Subject ID...' />
-          </Form.Item>
-
-          <Form.Item label='Examiner' name='examinerId' rules={[{ required: true, message: 'Vui lòng chọn Examiner' }]}>
-            <AutoComplete
-              placeholder='Tìm kiếm examiner theo email...'
-              onSearch={handleSearchExaminers}
-              notFoundContent={examinerSearchLoading ? 'Đang tải...' : 'Không tìm thấy'}
-              options={examiners.map((examiner) => ({
-                value: examiner.email,
-                label: (
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{examiner.displayName}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>{examiner.email}</div>
-                  </div>
-                )
-              }))}
-              filterOption={false}
-            />
-          </Form.Item>
-
-          <Form.Item label='File ZIP' required>
-            <Upload
-              fileList={fileList}
-              onChange={handleFileChange}
-              beforeUpload={() => false}
-              accept='.zip'
-              maxCount={1}
-            >
-              <Button icon={<PlusOutlined />}>Chọn file ZIP</Button>
-            </Upload>
-          </Form.Item>
-
-          <Form.Item label='File Excel Tiêu chí chấm' help='Tùy chọn: Upload file Excel chứa tiêu chí chấm điểm'>
-            <Upload
-              fileList={excelFileList}
-              onChange={handleExcelFileChange}
-              beforeUpload={() => false}
-              accept='.xlsx,.xls'
-              maxCount={1}
-            >
-              <Button icon={<PlusOutlined />}>Chọn file Excel</Button>
-            </Upload>
-          </Form.Item>
-
-          <Form.Item>
-            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={handleCloseUploadModal}>Hủy</Button>
-              <Button type='primary' htmlType='submit' loading={uploading}>
-                Upload
+        {submissionToUpdate && (
+          <div>
+            <Typography.Paragraph>
+              <strong>Bài nộp:</strong> {submissionToUpdate.assessments?.[0]?.submissionName || submissionToUpdate.id}
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              <strong>Mã kỳ thi:</strong> {submissionToUpdate.examCode}
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              <strong>Mã môn học:</strong> {submissionToUpdate.subjectIdCode}
+            </Typography.Paragraph>
+            <Typography.Paragraph style={{ marginTop: 24, marginBottom: 16 }}>
+              Chọn trạng thái cập nhật:
+            </Typography.Paragraph>
+            <Space direction='vertical' style={{ width: '100%' }} size='middle'>
+              <Button
+                type='primary'
+                icon={<CheckOutlined />}
+                size='large'
+                block
+                onClick={() => {
+                  console.log('Button clicked: validated')
+                  handleModeratorAction('validated')
+                }}
+              >
+                Xác thực không vi phạm
+              </Button>
+              <Button
+                danger
+                icon={<CloseOutlined />}
+                size='large'
+                block
+                onClick={() => {
+                  console.log('Button clicked: violated')
+                  handleModeratorAction('violated')
+                }}
+              >
+                Xác thực vi phạm
               </Button>
             </Space>
-          </Form.Item>
-        </Form>
+          </div>
+        )}
+      </Modal>
+
+      {/* Confirm Modal */}
+      <Modal
+        title={pendingAction === 'validated' ? 'Xác nhận xác thực không vi phạm' : 'Xác nhận xác thực vi phạm'}
+        open={confirmModalVisible}
+        onOk={handleConfirmAction}
+        onCancel={() => {
+          setConfirmModalVisible(false)
+          setPendingAction(null)
+        }}
+        confirmLoading={isProcessing}
+        okText='Xác nhận'
+        cancelText='Hủy'
+        okType={pendingAction === 'validated' ? 'primary' : 'danger'}
+      >
+        {submissionToUpdate && (
+          <Typography.Paragraph>
+            {pendingAction === 'validated'
+              ? `Bạn có chắc chắn muốn xác thực bài nộp "${submissionToUpdate.assessments?.[0]?.submissionName || submissionToUpdate.id}" là không vi phạm?`
+              : `Bạn có chắc chắn muốn xác thực bài nộp "${submissionToUpdate.assessments?.[0]?.submissionName || submissionToUpdate.id}" là vi phạm?`}
+          </Typography.Paragraph>
+        )}
       </Modal>
     </div>
   )
 }
 
-export default SubmissionsPage
+export default ModeratorSubmissionsPage
