@@ -22,7 +22,8 @@ import {
 } from 'antd'
 
 import api from '../../apis/apiClient'
-import type { ApiResponse, PaginationResponse } from '../../types/api.dto'
+import { createExam, deleteExam, getExamById, getExams, updateExam } from '../../apis/exams'
+import type { PaginationResponse } from '../../types/api.dto'
 import type { Exam, ExamDetail } from '../../types/exam.dto'
 import type { Semester } from '../../types/semester.dto'
 
@@ -77,17 +78,17 @@ const ExamsPage: React.FC = () => {
         if (code) params.code = code
         if (status !== null) params.isActive = status
 
-        const response = await api.get<PaginationResponse<Exam>>('/api/v1/exams', { params })
+        const response = await getExams(params)
 
-        if (response.data.success) {
-          setExams(response.data.data)
+        if (response.success) {
+          setExams(response.data)
           setPagination({
-            pageIndex: response.data.pageIndex,
-            pageSize: response.data.pageSize,
-            total: response.data.totalCount
+            pageIndex: response.pageIndex,
+            pageSize: response.pageSize,
+            total: response.totalCount
           })
         } else {
-          messageApi.error(response.data.message || 'Không thể tải danh sách kỳ thi')
+          messageApi.error(response.message || 'Không thể tải danh sách kỳ thi')
         }
       } catch {
         messageApi.error('Lỗi khi tải danh sách kỳ thi')
@@ -126,11 +127,11 @@ const ExamsPage: React.FC = () => {
     setDetailLoading(true)
     setIsDetailModalVisible(true)
     try {
-      const response = await api.get<ApiResponse<ExamDetail>>(`/api/v1/exams/${id}`)
-      if (response.data.success) {
-        setSelectedExam(response.data.data)
+      const response = await getExamById(id)
+      if (response.success) {
+        setSelectedExam(response.data)
       } else {
-        messageApi.error(response.data.message || 'Không thể tải thông tin kỳ thi')
+        messageApi.error(response.message || 'Không thể tải thông tin kỳ thi')
       }
     } catch {
       messageApi.error('Lỗi khi tải thông tin kỳ thi')
@@ -146,9 +147,9 @@ const ExamsPage: React.FC = () => {
 
       // Fetch chi tiết để có đầy đủ thông tin
       try {
-        const response = await api.get<ApiResponse<ExamDetail>>(`/api/v1/exams/${exam.id}`)
-        if (response.data.success) {
-          const detail = response.data.data
+        const response = await getExamById(exam.id)
+        if (response.success) {
+          const detail = response.data
           form.setFieldsValue({
             semesterId: detail.semester.id,
             code: detail.code,
@@ -156,7 +157,7 @@ const ExamsPage: React.FC = () => {
           })
           setIsModalVisible(true)
         } else {
-          messageApi.error(response.data.message || 'Không thể tải thông tin kỳ thi')
+          messageApi.error(response.message || 'Không thể tải thông tin kỳ thi')
         }
       } catch {
         messageApi.error('Lỗi khi tải thông tin kỳ thi')
@@ -174,7 +175,7 @@ const ExamsPage: React.FC = () => {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await api.delete(`/api/v1/exams/${id}`)
+          await deleteExam(id)
           messageApi.success({
             content: 'Xóa kỳ thi thành công!',
             duration: 3
@@ -216,13 +217,13 @@ const ExamsPage: React.FC = () => {
       }
 
       if (isEdit && editingId) {
-        await api.put(`/api/v1/exams/${editingId}`, payload)
+        await updateExam(editingId, payload)
         messageApi.success({
           content: 'Cập nhật kỳ thi thành công!',
           duration: 3
         })
       } else {
-        await api.post('/api/v1/exams', payload)
+        await createExam(payload)
         messageApi.success({
           content: 'Tạo kỳ thi mới thành công!',
           duration: 3

@@ -19,8 +19,8 @@ import {
   Typography
 } from 'antd'
 
-import api from '../../apis/apiClient'
-import type { ApiResponse, PaginationResponse } from '../../types/api.dto'
+import { getSemesters } from '../../apis/semesters'
+import { createSubject, deleteSubject, getSubjectById, getSubjects, updateSubject } from '../../apis/subjects'
 import type { Semester } from '../../types/semester.dto'
 import type { Subject, SubjectDetail } from '../../types/subject.dto'
 
@@ -52,11 +52,13 @@ const SubjectsPage: React.FC = () => {
 
   const fetchSemesters = useCallback(async () => {
     try {
-      const response = await api.get<PaginationResponse<Semester>>('/api/v1/semesters', {
-        params: { pageIndex: 1, pageSize: 100, isActive: true }
+      const response = await getSemesters({
+        pageIndex: 1,
+        pageSize: 100,
+        isActive: true
       })
-      if (response.data.success) {
-        setSemesters(response.data.data)
+      if (response.success) {
+        setSemesters(response.data)
       }
     } catch {
       messageApi.error('Lỗi khi tải danh sách học kỳ')
@@ -76,17 +78,17 @@ const SubjectsPage: React.FC = () => {
         if (code) params.code = code
         if (status !== null) params.isActive = status
 
-        const response = await api.get<PaginationResponse<Subject>>('/api/v1/subjects', { params })
+        const response = await getSubjects(params)
 
-        if (response.data.success) {
-          setSubjects(response.data.data)
+        if (response.success) {
+          setSubjects(response.data)
           setPagination({
-            pageIndex: response.data.pageIndex,
-            pageSize: response.data.pageSize,
-            total: response.data.totalCount
+            pageIndex: response.pageIndex,
+            pageSize: response.pageSize,
+            total: response.totalCount
           })
         } else {
-          messageApi.error(response.data.message || 'Không thể tải danh sách môn học')
+          messageApi.error(response.message || 'Không thể tải danh sách môn học')
         }
       } catch {
         messageApi.error('Lỗi khi tải danh sách môn học')
@@ -128,11 +130,11 @@ const SubjectsPage: React.FC = () => {
     setDetailLoading(true)
     setIsDetailModalVisible(true)
     try {
-      const response = await api.get<ApiResponse<SubjectDetail>>(`/api/v1/subjects/${id}`)
-      if (response.data.success) {
-        setSelectedSubject(response.data.data)
+      const response = await getSubjectById(id)
+      if (response.success) {
+        setSelectedSubject(response.data)
       } else {
-        messageApi.error(response.data.message || 'Không thể tải thông tin môn học')
+        messageApi.error(response.message || 'Không thể tải thông tin môn học')
       }
     } catch {
       messageApi.error('Lỗi khi tải thông tin môn học')
@@ -148,9 +150,9 @@ const SubjectsPage: React.FC = () => {
 
       // Fetch chi tiết để có đầy đủ thông tin
       try {
-        const response = await api.get<ApiResponse<SubjectDetail>>(`/api/v1/subjects/${subject.id}`)
-        if (response.data.success) {
-          const detail = response.data.data
+        const response = await getSubjectById(subject.id)
+        if (response.success) {
+          const detail = response.data
           form.setFieldsValue({
             name: detail.name,
             code: detail.code,
@@ -158,7 +160,7 @@ const SubjectsPage: React.FC = () => {
           })
           setIsModalVisible(true)
         } else {
-          messageApi.error(response.data.message || 'Không thể tải thông tin môn học')
+          messageApi.error(response.message || 'Không thể tải thông tin môn học')
         }
       } catch {
         messageApi.error('Lỗi khi tải thông tin môn học')
@@ -176,7 +178,7 @@ const SubjectsPage: React.FC = () => {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await api.delete(`/api/v1/subjects/${id}`)
+          await deleteSubject(id)
           messageApi.success({
             content: 'Xóa môn học thành công!',
             duration: 3
@@ -211,7 +213,7 @@ const SubjectsPage: React.FC = () => {
   const handleModalSubmit = async (values: any) => {
     try {
       if (isEdit && editingId) {
-        await api.put(`/api/v1/subjects/${editingId}`, {
+        await updateSubject(editingId, {
           semesterId: values.semesterId,
           name: values.name,
           code: values.code
@@ -221,7 +223,7 @@ const SubjectsPage: React.FC = () => {
           duration: 3
         })
       } else {
-        await api.post('/api/v1/subjects', {
+        await createSubject({
           semesterId: values.semesterId,
           name: values.name,
           code: values.code
