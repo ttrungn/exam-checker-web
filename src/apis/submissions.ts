@@ -8,14 +8,14 @@ export interface CreateSubmissionData {
 }
 
 export const getSubmissions = async (params?: GetSubmissionsParams): Promise<SubmissionPaginationResponse> => {
-  const response = await api.get<SubmissionPaginationResponse>('api/v1/submissions', { params })
+  const response = await api.get<SubmissionPaginationResponse>('/api/v1/submissions', { params })
   return response.data
 }
 
 export const getSubmissionById = async (
   id: string
 ): Promise<{ success: boolean; data: Submission; message: string }> => {
-  const response = await api.get<{ success: boolean; data: Submission; message: string }>(`api/v1/submissions/${id}`)
+  const response = await api.get<{ success: boolean; data: Submission; message: string }>(`/api/v1/submissions/${id}`)
   return response.data
 }
 
@@ -27,7 +27,7 @@ export const createSubmission = async (
   formData.append('examSubjectId', data.examSubjectId)
   formData.append('zipFile', data.zipFile)
 
-  const response = await api.post<{ success: boolean; data: any; message: string }>('api/v1/submissions', formData, {
+  const response = await api.post<{ success: boolean; data: any; message: string }>('/api/v1/submissions/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -36,7 +36,7 @@ export const createSubmission = async (
 }
 
 export const getUserSubmissions = async (userId: string): Promise<SubmissionPaginationResponse> => {
-  const response = await api.get<SubmissionPaginationResponse>(`api/v1/submissions/user`, {
+  const response = await api.get<SubmissionPaginationResponse>(`/api/v1/submissions/user`, {
     params: { userId }
   })
   return response.data
