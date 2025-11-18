@@ -11,8 +11,9 @@ import {
   SubjectsPage,
   SubmissionsPage
 } from '../pages'
-import { GradingPage } from '../pages/Grading'
 import NotFound from '../pages/Errors/NotFound'
+import { GradingPage } from '../pages/Grading'
+import { ModeratorSubmissionsPage } from '../pages/Submissions'
 import { UsersPage } from '../pages/Users'
 
 const AppRouter: React.FC = () => {
@@ -29,6 +30,7 @@ const AppRouter: React.FC = () => {
           <Route path='/' element={<DashboardPage />} />
           <Route path='/manage-users' element={<UsersPage />} />
           <Route path='/submissions' element={<SubmissionsPage />} />
+          <Route path='/moderator-submissions' element={<ModeratorSubmissionsPage />} />
           <Route path='/my-submissions' element={<MySubmissionsPage />} />
           <Route path='/grading/:assessmentId' element={<GradingPage />} />
           <Route path='/exams' element={<ExamsPage />} />
