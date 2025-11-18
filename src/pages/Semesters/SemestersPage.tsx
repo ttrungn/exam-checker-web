@@ -4,8 +4,7 @@ import React, { useCallback, useState } from 'react'
 
 import { Button, Card, Col, Form, Input, message, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
 
-import api from '../../apis/apiClient'
-import type { PaginationResponse } from '../../types/api.dto'
+import { createSemester, deleteSemester, getSemesters, updateSemester } from '../../apis/semesters'
 import type { Semester } from '../../types/semester.dto'
 
 const { Title } = Typography
@@ -41,17 +40,17 @@ const SemestersPage: React.FC = () => {
         if (name) params.name = name
         if (status !== null) params.isActive = status
 
-        const response = await api.get<PaginationResponse<Semester>>('/api/v1/semesters', { params })
+        const response = await getSemesters(params)
 
-        if (response.data.success) {
-          setSemesters(response.data.data)
+        if (response.success) {
+          setSemesters(response.data)
           setPagination({
-            pageIndex: response.data.pageIndex,
-            pageSize: response.data.pageSize,
-            total: response.data.totalCount
+            pageIndex: response.pageIndex,
+            pageSize: response.pageSize,
+            total: response.totalCount
           })
         } else {
-          messageApi.error(response.data.message || 'Không thể tải danh sách học kỳ')
+          messageApi.error(response.message || 'Không thể tải danh sách học kỳ')
         }
       } catch {
         messageApi.error('Lỗi khi tải danh sách học kỳ')
@@ -106,7 +105,7 @@ const SemestersPage: React.FC = () => {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await api.delete(`/api/v1/semesters/${id}`)
+          await deleteSemester(id)
           messageApi.success({
             content: 'Xóa học kỳ thành công!',
             duration: 3
@@ -140,7 +139,7 @@ const SemestersPage: React.FC = () => {
   const handleModalSubmit = async (values: any) => {
     try {
       if (isEdit && editingId) {
-        await api.put(`/api/v1/semesters/${editingId}`, {
+        await updateSemester(editingId, {
           name: values.name
         })
         messageApi.success({
@@ -148,7 +147,7 @@ const SemestersPage: React.FC = () => {
           duration: 3
         })
       } else {
-        await api.post('/api/v1/semesters', {
+        await createSemester({
           name: values.name
         })
         messageApi.success({
