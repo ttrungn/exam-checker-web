@@ -14,6 +14,13 @@ export enum AssessmentStatus {
   Cancelled = 3 // bị hủy
 }
 
+export enum GradeStatus {
+  NotGraded = 0, // chưa chấm
+  Graded = 1, // đã chấm xong
+  ReAssigned = 2, // được phân công chấm lại
+  Approved = 3 // đã duyệt điểm
+}
+
 export interface Assessment {
   id: string
   submissionName: string
@@ -37,6 +44,7 @@ export interface Submission {
   moderatorEmail: string | null
   assignAt: string
   status: number
+  gradeStatus: number
   fileUrl: string
   createdAt: string
   updatedAt: string
@@ -71,7 +79,7 @@ export interface GetSubmissionsParams {
   examinerName?: string
   moderatorName?: string
   submissionName?: string
-  assessmentStatus?: number
+  gradeStatus?: number
 }
 
 export interface SubmissionPaginationData {

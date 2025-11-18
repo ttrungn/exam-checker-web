@@ -21,7 +21,7 @@ import {
   Typography
 } from 'antd'
 
-import { getAssessmentById, submitGrading, completeAssessment } from '../../apis/submissions'
+import { getAssessmentById, submitGrading } from '../../apis/submissions'
 import type { AssessmentDetail, ScoreDetail } from '../../types/submission.dto'
 
 const { Title, Text } = Typography
@@ -139,24 +139,15 @@ const GradingPage: React.FC = () => {
 
       console.log('Sending grading data:', JSON.stringify(gradingData, null, 2))
 
-      // Step 1: Submit grading data
       const gradeResponse = await submitGrading(assessmentId, gradingData)
 
-      if (!gradeResponse.success && gradeResponse.message) {
-        messageApi.error(gradeResponse.message || 'Không thể lưu điểm')
-        return
-      }
-
-      // Step 2: Complete assessment
-      const completeResponse = await completeAssessment(assessmentId)
-
-      if (completeResponse.success || !completeResponse.message) {
+      if (gradeResponse.success) {
         messageApi.success('Chấm điểm và hoàn thành thành công!')
         setTimeout(() => {
           navigate('/my-submissions')
         }, 1500)
       } else {
-        messageApi.warning('Đã lưu điểm nhưng không thể hoàn thành assessment: ' + completeResponse.message)
+        messageApi.error(gradeResponse.message || 'Không thể lưu điểm')
       }
     } catch (error: any) {
       console.error('Error submitting grading:', error)
