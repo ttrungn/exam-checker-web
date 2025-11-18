@@ -1,4 +1,7 @@
+import type { PaginationResponse } from '../types/api.dto'
+import type { ExamSubject, ExamSubjectParams, ViolationStructure } from '../types/examSubject.dto'
 import api from './apiClient'
+import type { ApiResponse } from './users'
 
 export interface ImportScoreStructureResponse {
   success: boolean
@@ -23,4 +26,24 @@ export const importScoreStructure = async (
     }
   )
   return response.data
+}
+
+export const getExamSubjects = async (params?: ExamSubjectParams): Promise<PaginationResponse<ExamSubject>> => {
+  const response = await api.get<PaginationResponse<ExamSubject>>('/api/v1/examsubjects', { params })
+  return response.data
+}
+
+// Get by id
+export const getExamSubjectById = async (id: string): Promise<ApiResponse<ExamSubject>> => {
+  const response = await api.get<ApiResponse<ExamSubject>>(`/api/v1/examsubjects/${id}`)
+  return response.data
+}
+
+
+export const updateViolationStructure = async (
+  examSubjectId: string,
+  rules: ViolationStructure
+): Promise<boolean> => {
+  await api.put(`/api/v1/examsubjects/${examSubjectId}/violation-structure`, rules)
+  return true
 }

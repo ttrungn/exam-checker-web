@@ -22,7 +22,8 @@ import {
 } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 
-import { importScoreStructure } from '../../apis/examSubjects'
+import { importScoreStructure, getExamSubjects } from '../../apis/examSubjects'
+import type { ExamSubject } from '../../types/examSubject.dto'
 import {
   createSubmission,
   getSubmissionById,
@@ -55,6 +56,8 @@ const SubmissionsPage: React.FC = () => {
   const [uploading, setUploading] = useState(false)
   const [examiners, setExaminers] = useState<UserAccount[]>([])
   const [examinerSearchLoading, setExaminerSearchLoading] = useState(false)
+  const [examSubjects, setExamSubjects] = useState<ExamSubject[]>([])
+  const [examSubjectLoading, setExamSubjectLoading] = useState(false)
 
   const [messageApi, messageContextHolder] = message.useMessage()
 
@@ -155,6 +158,8 @@ const SubmissionsPage: React.FC = () => {
     setUploadModalVisible(true)
     // Load initial examiners list
     await handleSearchExaminers('')
+    // Load exam subjects list
+    await loadExamSubjects()
   }
 
   const handleCloseUploadModal = () => {
@@ -240,6 +245,20 @@ const SubmissionsPage: React.FC = () => {
     // Chỉ giữ file mới nhất
     newFileList = newFileList.slice(-1)
     setExcelFileList(newFileList)
+  }
+
+  const loadExamSubjects = async () => {
+    setExamSubjectLoading(true)
+    try {
+      const res = await getExamSubjects({ pageIndex: 1, pageSize: 200 })
+      if (res.success) {
+        setExamSubjects(res.data)
+      }
+    } catch {
+      // silent
+    } finally {
+      setExamSubjectLoading(false)
+    }
   }
 
   const getStatusColor = (status: number) => {
@@ -611,11 +630,21 @@ const SubmissionsPage: React.FC = () => {
       >
         <Form form={uploadForm} layout='vertical' onFinish={handleUploadSubmit}>
           <Form.Item
-            label='Exam Subject ID'
+            label='Exam Subject'
             name='examSubjectId'
-            rules={[{ required: true, message: 'Vui lòng nhập Exam Subject ID' }]}
+            rules={[{ required: true, message: 'Vui lòng chọn Exam Subject' }]}
           >
-            <Input placeholder='Nhập Exam Subject ID...' />
+            <Select
+              placeholder='Chọn Exam-Subject (ExamCode - SubjectCode)'
+              loading={examSubjectLoading}
+              showSearch
+              optionFilterProp='label'
+              options={examSubjects.map((es) => ({
+                label: `${es.examCode} - ${es.subjectCode}`,
+                value: es.id
+              }))}
+              notFoundContent={examSubjectLoading ? 'Đang tải...' : 'Không có dữ liệu'}
+            />
           </Form.Item>
 
           <Form.Item label='Examiner' name='examinerId' rules={[{ required: true, message: 'Vui lòng chọn Examiner' }]}>

@@ -5,16 +5,18 @@ import MSALRedirect from '../components/Auth/MSALRedirect'
 import {
   DashboardPage,
   ExamsPage,
+  ExamSubjectsPage,
   MySubmissionsPage,
   SemestersPage,
   SettingsPage,
   SubjectsPage,
-  SubmissionsPage
+  SubmissionsPage,
 } from '../pages'
-import { GradingPage } from '../pages/Grading'
 import NotFound from '../pages/Errors/NotFound'
+import { GradingPage } from '../pages/Grading'
 import { ModeratorSubmissionsPage } from '../pages/Submissions'
 import { UsersPage } from '../pages/Users'
+
 
 const AppRouter: React.FC = () => {
   return (
@@ -37,6 +39,7 @@ const AppRouter: React.FC = () => {
           <Route path='/semesters' element={<SemestersPage />} />
           <Route path='/subjects' element={<SubjectsPage />} />
           <Route path='/settings' element={<SettingsPage />} />
+          <Route path="/exam-subjects" element={<ExamSubjectsPage />} />
         </Route>
         <Route path='/login-redirect' element={<MSALRedirect />} />
         <Route path='*' element={<NotFound />} />
