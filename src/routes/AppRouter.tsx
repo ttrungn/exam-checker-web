@@ -11,8 +11,8 @@ import {
   SubjectsPage,
   SubmissionsPage
 } from '../pages'
-import NotFound from '../pages/Errors/NotFound'
 import { GradingPage } from '../pages/Grading'
+import NotFound from '../pages/Errors/NotFound'
 import { ModeratorSubmissionsPage } from '../pages/Submissions'
 import { UsersPage } from '../pages/Users'
 

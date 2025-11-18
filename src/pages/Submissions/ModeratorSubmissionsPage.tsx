@@ -21,13 +21,14 @@ import {
 } from 'antd'
 
 import {
+  getSubmissionById,
   getSubmissions,
   type GetSubmissionsParams,
   type Submission,
   updateSubmissionToModeratorValidated,
   updateSubmissionToModeratorViolated
 } from '../../apis/submissions'
-import { AssessmentStatus, SubmissionStatus } from '../../types/submission.dto'
+import { AssessmentStatus, GradeStatus, SubmissionStatus } from '../../types/submission.dto'
 
 const { Title } = Typography
 
@@ -111,10 +112,8 @@ const ModeratorSubmissionsPage: React.FC = () => {
     if (values.examCode) params.examCode = values.examCode
     if (values.subjectCode) params.subjectCode = values.subjectCode
     if (values.status !== undefined && values.status !== null) params.status = values.status
-    if (values.examinerName) params.examinerName = values.examinerName
     if (values.submissionName) params.submissionName = values.submissionName
-    if (values.assessmentStatus !== undefined && values.assessmentStatus !== null)
-      params.assessmentStatus = values.assessmentStatus
+    if (values.gradeStatus !== undefined && values.gradeStatus !== null) params.gradeStatus = values.gradeStatus
 
     setSearchParams(params)
     fetchSubmissions(1, 10, params)
@@ -132,11 +131,18 @@ const ModeratorSubmissionsPage: React.FC = () => {
     setDetailLoading(true)
     setDetailModalVisible(true)
     try {
-      // Use the record directly as it already has assessments from the list API
-      setSelectedSubmission(record)
+      // Fetch full submission details with assessments
+      const response = await getSubmissionById(record.id)
+      if (response.success) {
+        setSelectedSubmission(response.data)
+      } else {
+        messageApi.error(response.message || 'Không thể tải chi tiết bài nộp')
+        setSelectedSubmission(record) // Fallback to record from list
+      }
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || 'Lỗi khi tải chi tiết bài nộp'
       messageApi.error(errorMessage)
+      setSelectedSubmission(record) // Fallback to record from list
     } finally {
       setDetailLoading(false)
     }
@@ -229,6 +235,36 @@ const ModeratorSubmissionsPage: React.FC = () => {
     }
   }
 
+  const getGradeStatusColor = (status: number) => {
+    switch (status) {
+      case GradeStatus.NotGraded:
+        return 'default'
+      case GradeStatus.Graded:
+        return 'success'
+      case GradeStatus.ReAssigned:
+        return 'warning'
+      case GradeStatus.Approved:
+        return 'blue'
+      default:
+        return 'default'
+    }
+  }
+
+  const getGradeStatusText = (status: number) => {
+    switch (status) {
+      case GradeStatus.NotGraded:
+        return 'Chưa chấm'
+      case GradeStatus.Graded:
+        return 'Đã chấm xong'
+      case GradeStatus.ReAssigned:
+        return 'Được phân công chấm lại'
+      case GradeStatus.Approved:
+        return 'Đã duyệt điểm'
+      default:
+        return `Trạng thái ${status}`
+    }
+  }
+
   const columns = [
     {
       title: 'Mã kỳ thi',
@@ -251,18 +287,6 @@ const ModeratorSubmissionsPage: React.FC = () => {
       }
     },
     {
-      title: 'Examiner',
-      dataIndex: 'examinerEmail',
-      key: 'examinerEmail',
-      render: (email: string | null) => email || <Tag color='default'>Chưa phân</Tag>
-    },
-    {
-      title: 'Moderator',
-      dataIndex: 'moderatorEmail',
-      key: 'moderatorEmail',
-      render: (email: string | null) => email || <Tag color='default'>Chưa phân</Tag>
-    },
-    {
       title: 'Trạng thái bài nộp',
       dataIndex: 'status',
       key: 'status',
@@ -270,34 +294,11 @@ const ModeratorSubmissionsPage: React.FC = () => {
     },
     {
       title: 'Trạng thái chấm bài',
-      key: 'assessmentStatus',
-      render: (_: any, record: Submission) => {
-        if (!record.assessments || record.assessments.length === 0) {
-          return <Tag color='default'>Chưa có</Tag>
-        }
-        const assessment = record.assessments[0]
-        return (
-          <Tag
-            color={
-              assessment.status === AssessmentStatus.Pending
-                ? 'default'
-                : assessment.status === AssessmentStatus.InReview
-                  ? 'processing'
-                  : assessment.status === AssessmentStatus.Complete
-                    ? 'success'
-                    : 'error'
-            }
-          >
-            {assessment.status === AssessmentStatus.Pending
-              ? 'Chưa chấm'
-              : assessment.status === AssessmentStatus.InReview
-                ? 'Đang chấm'
-                : assessment.status === AssessmentStatus.Complete
-                  ? 'Đã chấm'
-                  : 'Đã hủy'}
-          </Tag>
-        )
-      }
+      key: 'gradeStatus',
+      dataIndex: 'gradeStatus',
+      render: (gradeStatus: number) => (
+        <Tag color={getGradeStatusColor(gradeStatus)}>{getGradeStatusText(gradeStatus)}</Tag>
+      )
     },
     {
       title: 'File bài nộp',
@@ -345,29 +346,22 @@ const ModeratorSubmissionsPage: React.FC = () => {
       <Card style={{ marginBottom: 16 }}>
         <Form form={searchForm} layout='vertical' onFinish={handleSearch}>
           <Row gutter={16}>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <Form.Item label='Mã kỳ thi' name='examCode'>
                 <Input placeholder='Tìm kiếm theo mã kỳ thi...' allowClear />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <Form.Item label='Mã môn học' name='subjectCode'>
                 <Input placeholder='Tìm kiếm theo mã môn học...' allowClear />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <Form.Item label='Tên bài nộp' name='submissionName'>
                 <Input placeholder='Tìm kiếm theo tên bài nộp...' allowClear />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item label='Examiner' name='examinerName'>
-                <Input placeholder='Tìm kiếm theo tên examiner...' allowClear />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <Form.Item label='Trạng thái bài nộp' name='status'>
                 <Select
                   placeholder='Chọn trạng thái'
@@ -380,21 +374,21 @@ const ModeratorSubmissionsPage: React.FC = () => {
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item label='Trạng thái chấm bài' name='assessmentStatus'>
+            <Col xs={24} sm={12} md={8}>
+              <Form.Item label='Trạng thái chấm bài' name='gradeStatus'>
                 <Select
                   placeholder='Chọn trạng thái chấm bài'
                   allowClear
                   options={[
-                    { label: 'Chưa chấm', value: AssessmentStatus.Pending },
-                    { label: 'Đang chấm', value: AssessmentStatus.InReview },
-                    { label: 'Đã chấm', value: AssessmentStatus.Complete },
-                    { label: 'Đã hủy', value: AssessmentStatus.Cancelled }
+                    { label: 'Chưa chấm', value: GradeStatus.NotGraded },
+                    { label: 'Đã chấm xong', value: GradeStatus.Graded },
+                    { label: 'Được phân công chấm lại', value: GradeStatus.ReAssigned },
+                    { label: 'Đã duyệt điểm', value: GradeStatus.Approved }
                   ]}
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6}>
+            <Col xs={24} sm={12} md={8}>
               <Form.Item label=' '>
                 <Space>
                   <Button type='primary' htmlType='submit' icon={<SearchOutlined />}>
@@ -466,15 +460,17 @@ const ModeratorSubmissionsPage: React.FC = () => {
                       : '-'}
                   </Typography.Text>
                 </Descriptions.Item>
-                <Descriptions.Item label='Examiner' span={1}>
-                  {selectedSubmission.examinerEmail || <Tag color='default'>Chưa phân</Tag>}
-                </Descriptions.Item>
                 <Descriptions.Item label='Moderator' span={1}>
                   {selectedSubmission.moderatorEmail || <Tag color='default'>Chưa phân</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label='Trạng thái bài nộp' span={1}>
                   <Tag color={getStatusColor(selectedSubmission.status)}>
                     {getStatusText(selectedSubmission.status)}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label='Trạng thái chấm bài' span={1}>
+                  <Tag color={getGradeStatusColor(selectedSubmission.gradeStatus)}>
+                    {getGradeStatusText(selectedSubmission.gradeStatus)}
                   </Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label='Trạng thái hoạt động' span={1}>
@@ -505,6 +501,9 @@ const ModeratorSubmissionsPage: React.FC = () => {
                     style={{ marginBottom: index < selectedSubmission.assessments.length - 1 ? 16 : 0 }}
                   >
                     <Descriptions bordered column={2} size='small'>
+                      <Descriptions.Item label='Examiner chấm' span={2}>
+                        {assessment.examinerEmail || <Tag color='default'>Chưa phân</Tag>}
+                      </Descriptions.Item>
                       <Descriptions.Item label='Trạng thái chấm bài' span={1}>
                         <Tag
                           color={
