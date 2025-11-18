@@ -126,7 +126,7 @@ export const getExaminers = async (email?: string): Promise<GetAccountsResponse>
   }
 
   const queryString = searchParams.toString()
-  const url = `/v1/accounts/examiners?${queryString}`
+  const url = `/api/v1/accounts/examiners?${queryString}`
 
   const response = await api.get<GetAccountsResponse>(url)
   return response.data
