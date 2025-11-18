@@ -1,23 +1,46 @@
-import { EyeOutlined } from '@ant-design/icons'
+import { EditOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons'
 
 import React, { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
-import { Button, Card, Descriptions, message, Modal, Space, Table, Tag, Typography } from 'antd'
+import {
+  Button,
+  Card,
+  Col,
+  Descriptions,
+  Form,
+  Input,
+  message,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography
+} from 'antd'
 
-import { getSubmissionById, getUserSubmissions, type Submission } from '../../apis/submissions'
+import { getUserSubmissions, type UserSubmission } from '../../apis/submissions'
+import { Roles } from '../../constants/auth'
 import { useAppSelector } from '../../hooks/customReduxHooks'
+import { AssessmentStatus, SubmissionStatus } from '../../types/submission.dto'
 
 const { Title } = Typography
 
 const MySubmissionsPage: React.FC = () => {
-  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const navigate = useNavigate()
+  const [submissions, setSubmissions] = useState<UserSubmission[]>([])
+  const [filteredSubmissions, setFilteredSubmissions] = useState<UserSubmission[]>([])
   const [loading, setLoading] = useState(false)
   const [detailModalVisible, setDetailModalVisible] = useState(false)
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null)
+  const [searchForm] = Form.useForm()
 
   const { profile } = useAppSelector((state) => state.userProfile)
   const [messageApi, messageContextHolder] = message.useMessage()
+
+  // Check if user has Examiner role
+  const isExaminer = profile?.roles?.some((role) => role.value === Roles.EXAMINER) || false
 
   const fetchMySubmissions = useCallback(async () => {
     if (!profile?.id) return
@@ -27,7 +50,9 @@ const MySubmissionsPage: React.FC = () => {
       const response = await getUserSubmissions(profile.id)
 
       if (response.success) {
-        setSubmissions(response.data.items || [])
+        const items = response.data.items || []
+        setSubmissions(items)
+        setFilteredSubmissions(items)
       } else {
         messageApi.error(response.message || 'Không thể tải danh sách bài nộp')
       }
@@ -45,22 +70,9 @@ const MySubmissionsPage: React.FC = () => {
     fetchMySubmissions()
   }, [fetchMySubmissions])
 
-  const handleViewDetail = async (record: Submission) => {
-    setDetailLoading(true)
+  const handleViewDetail = async (record: UserSubmission) => {
     setDetailModalVisible(true)
-    try {
-      const response = await getSubmissionById(record.id)
-      if (response.success) {
-        setSelectedSubmission(response.data)
-      } else {
-        messageApi.error(response.message || 'Không thể tải chi tiết bài nộp')
-      }
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 'Lỗi khi tải chi tiết bài nộp'
-      messageApi.error(errorMessage)
-    } finally {
-      setDetailLoading(false)
-    }
+    setSelectedSubmission(record)
   }
 
   const handleCloseDetailModal = () => {
@@ -68,35 +80,70 @@ const MySubmissionsPage: React.FC = () => {
     setSelectedSubmission(null)
   }
 
-  const getStatusColor = (status: string | number) => {
-    const statusStr = typeof status === 'number' ? status.toString() : status
-    switch (statusStr) {
-      case '0':
-      case 'processing':
+  const handleSearch = (values: any) => {
+    let filtered = [...submissions]
+
+    if (values.examCode) {
+      filtered = filtered.filter((s) => s.examCode.toLowerCase().includes(values.examCode.toLowerCase()))
+    }
+
+    if (values.subjectCode) {
+      filtered = filtered.filter((s) => s.subjectIdCode.toLowerCase().includes(values.subjectCode.toLowerCase()))
+    }
+
+    if (values.submissionName) {
+      filtered = filtered.filter((s) => s.submissionName?.toLowerCase().includes(values.submissionName.toLowerCase()))
+    }
+
+    if (values.status !== undefined && values.status !== null) {
+      filtered = filtered.filter((s) => s.status === values.status)
+    }
+
+    if (values.assessmentStatus !== undefined && values.assessmentStatus !== null) {
+      filtered = filtered.filter((s) => s.assessmentStatus === values.assessmentStatus)
+    }
+
+    setFilteredSubmissions(filtered)
+  }
+
+  const handleResetSearch = () => {
+    searchForm.resetFields()
+    setFilteredSubmissions(submissions)
+  }
+
+  const getStatusColor = (status: number) => {
+    switch (status) {
+      case SubmissionStatus.Processing:
         return 'processing'
-      case '1':
-      case 'validated':
+      case SubmissionStatus.Validated:
         return 'success'
-      case '2':
-      case 'violated':
+      case SubmissionStatus.Violated:
+        return 'error'
+      case SubmissionStatus.Complained:
+        return 'warning'
+      case SubmissionStatus.ModeratorValidated:
+        return 'success'
+      case SubmissionStatus.ModeratorViolated:
         return 'error'
       default:
         return 'default'
     }
   }
 
-  const getStatusText = (status: string | number) => {
-    const statusStr = typeof status === 'number' ? status.toString() : status
-    switch (statusStr) {
-      case '0':
-      case 'processing':
+  const getStatusText = (status: number) => {
+    switch (status) {
+      case SubmissionStatus.Processing:
         return 'Đang xử lý'
-      case '1':
-      case 'validated':
-        return 'Hợp lệ'
-      case '2':
-      case 'violated':
+      case SubmissionStatus.Validated:
+        return 'Đã xác thực'
+      case SubmissionStatus.Violated:
         return 'Vi phạm'
+      case SubmissionStatus.Complained:
+        return 'Đã khiếu nại'
+      case SubmissionStatus.ModeratorValidated:
+        return 'Moderator xác thực'
+      case SubmissionStatus.ModeratorViolated:
+        return 'Moderator từ chối'
       default:
         return `Trạng thái ${status}`
     }
@@ -114,16 +161,41 @@ const MySubmissionsPage: React.FC = () => {
       key: 'subjectIdCode'
     },
     {
-      title: 'Moderator',
-      dataIndex: 'moderatorEmail',
-      key: 'moderatorEmail',
-      render: (email: string | null) => email || <Tag color='default'>Chưa phân</Tag>
+      title: 'Tên bài nộp',
+      dataIndex: 'submissionName',
+      key: 'submissionName',
+      render: (name: string) => name || '-'
     },
     {
-      title: 'Trạng thái',
+      title: 'Trạng thái bài nộp',
       dataIndex: 'status',
       key: 'status',
       render: (status: number) => <Tag color={getStatusColor(status)}>{getStatusText(status)}</Tag>
+    },
+    {
+      title: 'Trạng thái chấm bài',
+      key: 'assessmentStatus',
+      render: (_: any, record: UserSubmission) => (
+        <Tag
+          color={
+            record.assessmentStatus === AssessmentStatus.Pending
+              ? 'default'
+              : record.assessmentStatus === AssessmentStatus.InReview
+                ? 'processing'
+                : record.assessmentStatus === AssessmentStatus.Complete
+                  ? 'success'
+                  : 'error'
+          }
+        >
+          {record.assessmentStatus === AssessmentStatus.Pending
+            ? 'Chưa chấm'
+            : record.assessmentStatus === AssessmentStatus.InReview
+              ? 'Đang chấm'
+              : record.assessmentStatus === AssessmentStatus.Complete
+                ? 'Đã chấm'
+                : 'Đã hủy'}
+        </Tag>
+      )
     },
     {
       title: 'Ngày phân công',
@@ -132,16 +204,34 @@ const MySubmissionsPage: React.FC = () => {
       render: (date: string) => new Date(date).toLocaleString('vi-VN')
     },
     {
+      title: 'File bài nộp',
+      key: 'fileDownload',
+      render: (_: any, record: UserSubmission) => (
+        <Space size='middle'>
+          {record.fileUrl && (
+            <Button size='small' type='link' href={record.fileUrl} target='_blank' rel='noopener noreferrer'>
+              Tải xuống
+            </Button>
+          )}
+        </Space>
+      )
+    },
+    {
       title: 'Hành động',
       key: 'actions',
-      render: (_: any, record: Submission) => (
+      render: (_: any, record: UserSubmission) => (
         <Space size='middle'>
           <Button size='small' icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>
             Chi tiết
           </Button>
-          {record.fileUrl && (
-            <Button size='small' type='link' href={record.fileUrl} target='_blank' rel='noopener noreferrer'>
-              Tải xuống
+          {isExaminer && record.assessmentId && (
+            <Button
+              size='small'
+              type='primary'
+              icon={<EditOutlined />}
+              onClick={() => navigate(`/grading/${record.assessmentId}`)}
+            >
+              Chấm điểm
             </Button>
           )}
         </Space>
@@ -163,10 +253,74 @@ const MySubmissionsPage: React.FC = () => {
         <Title level={2}>Các bài cần chấm điểm</Title>
       </div>
 
+      <Card style={{ marginBottom: 16 }}>
+        <Form form={searchForm} layout='vertical' onFinish={handleSearch}>
+          <Row gutter={16}>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item label='Mã kỳ thi' name='examCode'>
+                <Input placeholder='Tìm kiếm theo mã kỳ thi...' allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item label='Mã môn học' name='subjectCode'>
+                <Input placeholder='Tìm kiếm theo mã môn học...' allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item label='Tên bài nộp' name='submissionName'>
+                <Input placeholder='Tìm kiếm theo tên bài nộp...' allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item label='Trạng thái bài nộp' name='status'>
+                <Select
+                  placeholder='Chọn trạng thái'
+                  allowClear
+                  options={[
+                    { label: 'Đang xử lý', value: SubmissionStatus.Processing },
+                    { label: 'Đã xác thực', value: SubmissionStatus.Validated },
+                    { label: 'Vi phạm', value: SubmissionStatus.Violated },
+                    { label: 'Đã khiếu nại', value: SubmissionStatus.Complained },
+                    { label: 'Moderator xác thực', value: SubmissionStatus.ModeratorValidated },
+                    { label: 'Moderator từ chối', value: SubmissionStatus.ModeratorViolated }
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item label='Trạng thái chấm bài' name='assessmentStatus'>
+                <Select
+                  placeholder='Chọn trạng thái chấm bài'
+                  allowClear
+                  options={[
+                    { label: 'Chưa chấm', value: AssessmentStatus.Pending },
+                    { label: 'Đang chấm', value: AssessmentStatus.InReview },
+                    { label: 'Đã chấm', value: AssessmentStatus.Complete },
+                    { label: 'Đã hủy', value: AssessmentStatus.Cancelled }
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={18}>
+              <Form.Item label=' '>
+                <Space>
+                  <Button type='primary' htmlType='submit' icon={<SearchOutlined />}>
+                    Tìm kiếm
+                  </Button>
+                  <Button onClick={handleResetSearch}>Đặt lại</Button>
+                </Space>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Card>
+
       <Card loading={loading}>
         <Table
           columns={columns}
-          dataSource={Array.isArray(submissions) ? submissions.map((s) => ({ ...s, key: s.id })) : []}
+          dataSource={Array.isArray(filteredSubmissions) ? filteredSubmissions.map((s) => ({ ...s, key: s.id })) : []}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
@@ -178,49 +332,111 @@ const MySubmissionsPage: React.FC = () => {
       </Card>
 
       <Modal
-        title='Chi tiết bài nộp'
+        title={
+          <div style={{ fontSize: '18px', fontWeight: 600, color: '#1890ff' }}>
+            <EyeOutlined style={{ marginRight: 8 }} />
+            Chi tiết bài nộp
+          </div>
+        }
         open={detailModalVisible}
         onCancel={handleCloseDetailModal}
         footer={[
+          isExaminer && selectedSubmission?.assessmentId && (
+            <Button
+              key='grade'
+              type='primary'
+              icon={<EditOutlined />}
+              onClick={() => {
+                handleCloseDetailModal()
+                navigate(`/grading/${selectedSubmission.assessmentId}`)
+              }}
+            >
+              Chấm điểm
+            </Button>
+          ),
           <Button key='close' onClick={handleCloseDetailModal}>
             Đóng
           </Button>
         ]}
-        width={800}
+        width={900}
       >
-        {detailLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>Đang tải...</div>
-        ) : selectedSubmission ? (
-          <Descriptions bordered column={1}>
-            <Descriptions.Item label='Mã bài thi'>{selectedSubmission.examCode}</Descriptions.Item>
-            <Descriptions.Item label='Mã môn học'>{selectedSubmission.subjectIdCode}</Descriptions.Item>
-            <Descriptions.Item label='Examiner'>
-              {selectedSubmission.examinerEmail || <Tag color='default'>Chưa phân</Tag>}
-            </Descriptions.Item>
-            <Descriptions.Item label='Moderator'>
-              {selectedSubmission.moderatorEmail || <Tag color='default'>Chưa phân</Tag>}
-            </Descriptions.Item>
-            <Descriptions.Item label='Trạng thái'>
-              <Tag color={getStatusColor(selectedSubmission.status)}>{getStatusText(selectedSubmission.status)}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label='Ngày phân công'>
-              {new Date(selectedSubmission.assignAt).toLocaleString('vi-VN')}
-            </Descriptions.Item>
-            <Descriptions.Item label='File bài nộp'>
-              {selectedSubmission.fileUrl ? (
-                <Button type='link' href={selectedSubmission.fileUrl} target='_blank' rel='noopener noreferrer'>
-                  Tải xuống
-                </Button>
-              ) : (
-                'Không có file'
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label='Trạng thái hoạt động'>
-              <Tag color={selectedSubmission.isActive ? 'green' : 'red'}>
-                {selectedSubmission.isActive ? 'Hoạt động' : 'Không hoạt động'}
-              </Tag>
-            </Descriptions.Item>
-          </Descriptions>
+        {selectedSubmission ? (
+          <>
+            <Card
+              title={<span style={{ fontSize: '15px', fontWeight: 500 }}>Thông tin bài nộp</span>}
+              style={{ marginBottom: 16 }}
+              size='small'
+            >
+              <Descriptions bordered column={2} size='small'>
+                <Descriptions.Item label='Mã bài thi' span={1}>
+                  <Typography.Text strong>{selectedSubmission.examCode}</Typography.Text>
+                </Descriptions.Item>
+                <Descriptions.Item label='Mã môn học' span={1}>
+                  <Typography.Text strong>{selectedSubmission.subjectIdCode}</Typography.Text>
+                </Descriptions.Item>
+                <Descriptions.Item label='Tên bài nộp' span={2}>
+                  <Typography.Text strong>{selectedSubmission.submissionName || '-'}</Typography.Text>
+                </Descriptions.Item>
+                <Descriptions.Item label='Trạng thái bài nộp' span={1}>
+                  <Tag color={getStatusColor(selectedSubmission.status)}>
+                    {getStatusText(selectedSubmission.status)}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label='Ngày phân công' span={1}>
+                  {new Date(selectedSubmission.assignAt).toLocaleString('vi-VN')}
+                </Descriptions.Item>
+                <Descriptions.Item label='File bài nộp' span={2}>
+                  {selectedSubmission.fileUrl ? (
+                    <Button type='link' href={selectedSubmission.fileUrl} target='_blank' rel='noopener noreferrer'>
+                      Tải xuống file
+                    </Button>
+                  ) : (
+                    <Typography.Text type='secondary'>Không có file</Typography.Text>
+                  )}
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
+
+            {selectedSubmission.assessmentId && (
+              <Card title={<span style={{ fontSize: '15px', fontWeight: 500 }}>Thông tin đánh giá</span>} size='small'>
+                <Descriptions bordered column={2} size='small'>
+                  <Descriptions.Item label='Trạng thái chấm bài' span={1}>
+                    <Tag
+                      color={
+                        selectedSubmission.assessmentStatus === AssessmentStatus.Pending
+                          ? 'default'
+                          : selectedSubmission.assessmentStatus === AssessmentStatus.InReview
+                            ? 'processing'
+                            : selectedSubmission.assessmentStatus === AssessmentStatus.Complete
+                              ? 'success'
+                              : 'error'
+                      }
+                    >
+                      {selectedSubmission.assessmentStatus === AssessmentStatus.Pending
+                        ? 'Chưa chấm'
+                        : selectedSubmission.assessmentStatus === AssessmentStatus.InReview
+                          ? 'Đang chấm'
+                          : selectedSubmission.assessmentStatus === AssessmentStatus.Complete
+                            ? 'Đã chấm'
+                            : 'Đã hủy'}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label='Điểm số' span={1}>
+                    {selectedSubmission.myScore !== null ? (
+                      <Typography.Text
+                        strong
+                        style={{ fontSize: '16px', color: selectedSubmission.myScore === 0 ? '#ff4d4f' : '#52c41a' }}
+                      >
+                        {selectedSubmission.myScore}
+                      </Typography.Text>
+                    ) : (
+                      <Typography.Text type='secondary'>Chưa chấm</Typography.Text>
+                    )}
+                  </Descriptions.Item>
+                </Descriptions>
+              </Card>
+            )}
+          </>
         ) : null}
       </Modal>
     </div>
