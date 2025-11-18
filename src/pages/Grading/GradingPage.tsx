@@ -1,7 +1,7 @@
 import { SaveOutlined } from '@ant-design/icons'
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import {
   Button,

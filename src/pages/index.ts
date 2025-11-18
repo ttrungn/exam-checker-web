@@ -1,5 +1,6 @@
 export { DashboardPage } from './Dashboard'
 export { ExamsPage } from './Exams'
+export { ExamSubjectsPage } from './ExamSubjects'
 export { MySubmissionsPage } from './MySubmissions'
 export { SemestersPage } from './Semesters'
 export { SettingsPage } from './Settings'

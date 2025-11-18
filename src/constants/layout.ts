@@ -34,6 +34,7 @@ export const SIDEBAR_ITEMS: NavItem[] = [
   { key: 'exams', label: 'Quản lý kỳ thi', icon: FileTextOutlined, roles: [Roles.ADMIN] },
   { key: 'semesters', label: 'Quản lý học kỳ', icon: CalendarOutlined, roles: [Roles.ADMIN] },
   { key: 'subjects', label: 'Quản lý môn học', icon: BookOutlined, roles: [Roles.ADMIN] },
+  { key: 'exam-subjects', label: 'Quản lý môn thi', icon: BookOutlined, roles: [Roles.MANAGER] },
   { key: 'settings', label: 'Cài đặt', icon: SettingOutlined, roles: [Roles.ADMIN] }
 ]
 

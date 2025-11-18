@@ -34,4 +34,4 @@ export const deleteSemester = async (id: string): Promise<void> => {
   await api.delete(`/api/v1/semesters/${id}`)
 }
 
-export type { SemesterParams, Semester }
+export type { Semester, SemesterParams }

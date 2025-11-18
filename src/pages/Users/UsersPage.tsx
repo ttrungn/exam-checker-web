@@ -534,7 +534,7 @@ const UsersPage: React.FC = () => {
         {editingUser && (
           <div style={{ marginBottom: 24 }}>
             <Divider orientation='left'>Thông tin người dùng</Divider>
-            
+
             <Row gutter={16}>
               <Col span={12}>
                 <p>
