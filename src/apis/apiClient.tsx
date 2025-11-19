@@ -48,6 +48,7 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const scopes = resolveScopes(relativeUrl, config.msalScopes)
   const token = await getAccessToken(scopes)
   const headers = AxiosHeaders.from(config.headers)
+  headers.set('ngrok-skip-browser-warning', 'true')
   headers.set('Authorization', `Bearer ${token}`)
   config.headers = headers
 
