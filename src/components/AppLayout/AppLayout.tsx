@@ -31,29 +31,29 @@ const AppLayout: React.FC = () => {
     token: { colorBgContainer, borderRadiusLG }
   } = theme.useToken()
 
-  useEffect(() => {
-    const account = instance.getActiveAccount()
+  // useEffect(() => {
+  //   const account = instance.getActiveAccount()
 
-    if (!account) return
+  //   if (!account) return
 
-    instance
-      .acquireTokenSilent(silentRequest)
-      .then((response) => {
-        console.log('ACCESS TOKEN:', response.accessToken)
-      })
-      .catch(async (error) => {
-        if (error instanceof InteractionRequiredAuthError) {
-          try {
-            const resp = await instance.acquireTokenRedirect(silentRequest)
-            console.log('ACCESS TOKEN:', resp)
-          } catch (err) {
-            console.error(err)
-          }
-        } else {
-          console.error(error)
-        }
-      })
-  }, [instance])
+  //   instance
+  //     .acquireTokenSilent(silentRequest)
+  //     .then((response) => {
+  //       console.log('ACCESS TOKEN:', response.accessToken)
+  //     })
+  //     .catch(async (error) => {
+  //       if (error instanceof InteractionRequiredAuthError) {
+  //         try {
+  //           const resp = await instance.acquireTokenRedirect(silentRequest)
+  //           console.log('ACCESS TOKEN:', resp)
+  //         } catch (err) {
+  //           console.error(err)
+  //         }
+  //       } else {
+  //         console.error(error)
+  //       }
+  //     })
+  // }, [instance])
 
   useEffect(() => {
     if (!profile && !isLoading) {
