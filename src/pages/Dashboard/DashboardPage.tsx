@@ -1,11 +1,19 @@
-import { PercentageOutlined, SearchOutlined } from '@ant-design/icons'
-import React, { useCallback, useEffect, useState } from 'react'
-import { Card, Col, Form, Input, message, Progress, Row, Space, Table, Tag, Typography, Button } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  FileTextOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  TrophyOutlined,
+  WarningOutlined
+} from '@ant-design/icons'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Button, Card, Col, Divider, Form, Input, message, Progress, Row, Space, Statistic, Tag, Typography } from 'antd'
 import { getDashboardSummary } from '../../apis/dashboard'
 import type { DashboardSummary } from '../../types/dashboard.dto'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
 const DashboardPage: React.FC = () => {
   const [form] = Form.useForm()
@@ -37,12 +45,12 @@ const DashboardPage: React.FC = () => {
         setLoading(false)
       }
     },
-    [filters]
+    []
   )
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchData(filters)
+  }, [fetchData])
 
   const onSearch = (values: any) => {
     const f = {
@@ -53,29 +61,18 @@ const DashboardPage: React.FC = () => {
     fetchData(f)
   }
 
-  const columns: ColumnsType<DashboardSummary> = [
-    { title: 'Kỳ thi', dataIndex: 'examCode', key: 'examCode' },
-    { title: 'Môn học', dataIndex: 'subjectCode', key: 'subjectCode' },
-    { title: 'Tổng bài nộp', dataIndex: 'totalSubmissions', key: 'totalSubmissions' },
-    { title: 'Đã chấm', dataIndex: 'graded', key: 'graded', render: (v: number) => <Tag color='green'>{v}</Tag> },
-    { title: 'Chấm lại', dataIndex: 'reassigned', key: 'reassigned', render: (v: number) => <Tag color='orange'>{v}</Tag> },
-    { title: 'Đã duyệt', dataIndex: 'approved', key: 'approved', render: (v: number) => <Tag color='blue'>{v}</Tag> },
-    { title: 'Chưa chấm', dataIndex: 'notGraded', key: 'notGraded' },
-    { title: 'Vi phạm', dataIndex: 'violated', key: 'violated', render: (v: number) => <Tag color='red'>{v}</Tag> },
-    {
-      title: 'Tiến độ',
-      dataIndex: 'progressPercent',
-      key: 'progressPercent',
-      render: (v: number) => (
-        <Space>
-          <Progress percent={Math.round(v)} size='small' />
-          <Tag icon={<PercentageOutlined />} color='processing'>
-            {Math.round(v)}%
-          </Tag>
-        </Space>
-      )
-    }
-  ]
+  // Calculate summary statistics
+  const summary = useMemo(() => {
+    const total = items.reduce((acc, item) => acc + item.totalSubmissions, 0)
+    const graded = items.reduce((acc, item) => acc + item.graded, 0)
+    const approved = items.reduce((acc, item) => acc + item.approved, 0)
+    const notGraded = items.reduce((acc, item) => acc + item.notGraded, 0)
+    const violated = items.reduce((acc, item) => acc + item.violated, 0)
+    const reassigned = items.reduce((acc, item) => acc + item.reassigned, 0)
+    const avgProgress = items.length > 0 ? items.reduce((acc, item) => acc + item.progressPercent, 0) / items.length : 0
+
+    return { total, graded, approved, notGraded, violated, reassigned, avgProgress }
+  }, [items])
 
   return (
     <div>
@@ -105,15 +102,141 @@ const DashboardPage: React.FC = () => {
         </Form>
       </Card>
 
-      <Card title={<Title level={4} style={{ margin: 0 }}>Tổng quan theo Exam-Subject</Title>} loading={loading}>
-        <Table
-          rowKey={(r) => r.examSubjectId}
-          columns={columns}
-          dataSource={items}
-          pagination={false}
-          scroll={{ x: 'max-content' }}
-        />
-      </Card>
+      {/* Summary Statistics */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title='Tổng bài nộp'
+              value={summary.total}
+              prefix={<FileTextOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title='Đã duyệt'
+              value={summary.approved}
+              prefix={<TrophyOutlined />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title='Đang chờ chấm'
+              value={summary.notGraded}
+              prefix={<ClockCircleOutlined />}
+              valueStyle={{ color: '#faad14' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card loading={loading}>
+            <Statistic
+              title='Tiến độ trung bình'
+              value={summary.avgProgress}
+              precision={1}
+              suffix='%'
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: summary.avgProgress >= 80 ? '#52c41a' : summary.avgProgress >= 50 ? '#faad14' : '#ff4d4f' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Exam-Subject Cards */}
+      <Title level={4}>Chi tiết theo Exam-Subject</Title>
+      {loading ? (
+        <Row gutter={[16, 16]}>
+          {[1, 2, 3, 4].map((i) => (
+            <Col xs={24} sm={12} lg={8} xl={6} key={i}>
+              <Card loading />
+            </Col>
+          ))}
+        </Row>
+      ) : items.length === 0 ? (
+        <Card>
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <ExclamationCircleOutlined style={{ fontSize: 48, color: '#ccc', marginBottom: 16 }} />
+            <Text type='secondary'>Không có dữ liệu. Vui lòng thử tìm kiếm với các tiêu chí khác.</Text>
+          </div>
+        </Card>
+      ) : (
+        <Row gutter={[16, 16]}>
+          {items.map((item) => (
+            <Col xs={24} sm={12} lg={8} xl={6} key={item.examSubjectId}>
+              <Card
+                title={
+                  <Space direction='vertical' size={0}>
+                    <Text strong style={{ fontSize: 16 }}>
+                      {item.examCode}
+                    </Text>
+                    <Tag color='blue'>{item.subjectCode}</Tag>
+                  </Space>
+                }
+                extra={
+                  <Progress
+                    type='circle'
+                    percent={Math.round(item.progressPercent)}
+                    width={50}
+                    strokeColor={
+                      item.progressPercent >= 80 ? '#52c41a' : item.progressPercent >= 50 ? '#faad14' : '#ff4d4f'
+                    }
+                  />
+                }
+                hoverable
+              >
+                <Space direction='vertical' size='small' style={{ width: '100%' }}>
+                  <Row justify='space-between'>
+                    <Text type='secondary'>Tổng bài nộp:</Text>
+                    <Text strong>{item.totalSubmissions}</Text>
+                  </Row>
+                  <Divider style={{ margin: '8px 0' }} />
+                  <Row justify='space-between'>
+                    <Space>
+                      <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                      <Text>Đã chấm:</Text>
+                    </Space>
+                    <Tag color='green'>{item.graded}</Tag>
+                  </Row>
+                  <Row justify='space-between'>
+                    <Space>
+                      <TrophyOutlined style={{ color: '#1890ff' }} />
+                      <Text>Đã duyệt:</Text>
+                    </Space>
+                    <Tag color='blue'>{item.approved}</Tag>
+                  </Row>
+                  <Row justify='space-between'>
+                    <Space>
+                      <ClockCircleOutlined style={{ color: '#faad14' }} />
+                      <Text>Chưa chấm:</Text>
+                    </Space>
+                    <Tag color='orange'>{item.notGraded}</Tag>
+                  </Row>
+                  <Row justify='space-between'>
+                    <Space>
+                      <ReloadOutlined style={{ color: '#722ed1' }} />
+                      <Text>Chấm lại:</Text>
+                    </Space>
+                    <Tag color='purple'>{item.reassigned}</Tag>
+                  </Row>
+                  <Row justify='space-between'>
+                    <Space>
+                      <WarningOutlined style={{ color: '#ff4d4f' }} />
+                      <Text>Vi phạm:</Text>
+                    </Space>
+                    <Tag color='red'>{item.violated}</Tag>
+                  </Row>
+                </Space>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      )}
     </div>
   )
 }
