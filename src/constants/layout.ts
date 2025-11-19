@@ -21,7 +21,7 @@ export type NavItem = {
 }
 
 export const SIDEBAR_ITEMS: NavItem[] = [
-  { key: '', label: 'Bảng phân tích', icon: DashboardOutlined, roles: [Roles.ADMIN] },
+  { key: '', label: 'Bảng phân tích', icon: DashboardOutlined, roles: [Roles.ADMIN,Roles.MANAGER] },
   { key: 'manage-users', label: 'Quản lý người dùng', icon: UserOutlined, roles: [Roles.ADMIN] },
   { key: 'submissions', label: 'Quản lý bài nộp', icon: FileSearchOutlined, roles: [Roles.MANAGER] },
   {

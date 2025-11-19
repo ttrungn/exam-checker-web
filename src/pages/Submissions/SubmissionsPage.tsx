@@ -34,7 +34,6 @@ import {
   type Submission
 } from '../../apis/submissions'
 import { getExaminers, type UserAccount } from '../../apis/users'
-import type { ExamSubject } from '../../types/examSubject.dto'
 import { AssessmentStatus, GradeStatus, SubmissionStatus } from '../../types/submission.dto'
 
 const { Title } = Typography
@@ -330,19 +329,6 @@ const SubmissionsPage: React.FC = () => {
     }
   }
 
-  const loadExamSubjects = async () => {
-    setExamSubjectLoading(true)
-    try {
-      const res = await getExamSubjects({ pageIndex: 1, pageSize: 200 })
-      if (res.success) {
-        setExamSubjects(res.data)
-      }
-    } catch {
-      // silent
-    } finally {
-      setExamSubjectLoading(false)
-    }
-  }
 
   const getStatusColor = (status: number) => {
     switch (status) {

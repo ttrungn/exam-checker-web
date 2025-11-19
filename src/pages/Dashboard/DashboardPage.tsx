@@ -1,64 +1,118 @@
-import { CheckCircleOutlined, ClockCircleOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons'
+import { PercentageOutlined, SearchOutlined } from '@ant-design/icons'
+import React, { useCallback, useEffect, useState } from 'react'
+import { Card, Col, Form, Input, message, Progress, Row, Space, Table, Tag, Typography, Button } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { getDashboardSummary } from '../../apis/dashboard'
+import type { DashboardSummary } from '../../types/dashboard.dto'
 
-import React from 'react'
-
-import { Button, Card, Col, Row, Space, Statistic, Typography } from 'antd'
-
-const { Title, Paragraph } = Typography
+const { Title } = Typography
 
 const DashboardPage: React.FC = () => {
+  const [form] = Form.useForm()
+  const [items, setItems] = useState<DashboardSummary[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const [filters, setFilters] = useState<{ examCode?: string; subjectCode?: string }>({})
+
+  const fetchData = useCallback(
+    async (f = filters) => {
+      setLoading(true)
+      try {
+        const res = await getDashboardSummary({
+          examCode: f.examCode,
+          subjectCode: f.subjectCode,
+          orderBy: 'examCode asc,subjectCode asc',
+          top: 100
+        })
+        if (res.success) {
+          setItems(res.data || [])
+        } else {
+          message.error(res.message || 'Không thể tải dữ liệu tổng quan')
+          setItems([])
+        }
+      } catch (e: any) {
+        message.error(e?.response?.data?.message || 'Lỗi khi tải dữ liệu tổng quan')
+        setItems([])
+      } finally {
+        setLoading(false)
+      }
+    },
+    [filters]
+  )
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const onSearch = (values: any) => {
+    const f = {
+      examCode: values.examCode || undefined,
+      subjectCode: values.subjectCode || undefined
+    }
+    setFilters(f)
+    fetchData(f)
+  }
+
+  const columns: ColumnsType<DashboardSummary> = [
+    { title: 'Kỳ thi', dataIndex: 'examCode', key: 'examCode' },
+    { title: 'Môn học', dataIndex: 'subjectCode', key: 'subjectCode' },
+    { title: 'Tổng bài nộp', dataIndex: 'totalSubmissions', key: 'totalSubmissions' },
+    { title: 'Đã chấm', dataIndex: 'graded', key: 'graded', render: (v: number) => <Tag color='green'>{v}</Tag> },
+    { title: 'Chấm lại', dataIndex: 'reassigned', key: 'reassigned', render: (v: number) => <Tag color='orange'>{v}</Tag> },
+    { title: 'Đã duyệt', dataIndex: 'approved', key: 'approved', render: (v: number) => <Tag color='blue'>{v}</Tag> },
+    { title: 'Chưa chấm', dataIndex: 'notGraded', key: 'notGraded' },
+    { title: 'Vi phạm', dataIndex: 'violated', key: 'violated', render: (v: number) => <Tag color='red'>{v}</Tag> },
+    {
+      title: 'Tiến độ',
+      dataIndex: 'progressPercent',
+      key: 'progressPercent',
+      render: (v: number) => (
+        <Space>
+          <Progress percent={Math.round(v)} size='small' />
+          <Tag icon={<PercentageOutlined />} color='processing'>
+            {Math.round(v)}%
+          </Tag>
+        </Space>
+      )
+    }
+  ]
+
   return (
     <div>
-      <Title level={2}>Analytics</Title>
-      <Paragraph>Overview of your exam checking system analytics and performance metrics.</Paragraph>
-
-      {/* Statistics Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic title='Total Exams' value={45} prefix={<FileTextOutlined />} valueStyle={{ color: '#1890ff' }} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title='Completed'
-              value={38}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic title='Pending' value={7} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#faad14' }} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic title='Success Rate' value={84.4} suffix='%' valueStyle={{ color: '#52c41a' }} />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Quick Actions */}
-      <Card title='Quick Actions' style={{ marginBottom: 24 }}>
-        <Space size='middle' wrap>
-          <Button type='primary' icon={<PlusOutlined />}>
-            Create New Exam
-          </Button>
-          <Button icon={<FileTextOutlined />}>View All Exams</Button>
-          <Button icon={<CheckCircleOutlined />}>Review Results</Button>
-        </Space>
+      {/** Filters */}
+      <Card style={{ marginBottom: 16 }}>
+        <Form form={form} layout='vertical' onFinish={onSearch}>
+          <Row gutter={16}>
+            <Col xs={24} sm={12} md={8}>
+              <Form.Item label='Mã kỳ thi' name='examCode'>
+                <Input placeholder='Lọc theo mã kỳ thi (vd: FALL25)' allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Form.Item label='Mã môn học' name='subjectCode'>
+                <Input placeholder='Lọc theo mã môn học (vd: PRN222)' allowClear />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Form.Item label=' '>
+                <Space>
+                  <Button type='primary' htmlType='submit' icon={<SearchOutlined />}>Tìm kiếm</Button>
+                  <Button onClick={() => { form.resetFields(); const f = {}; setFilters(f); fetchData(f as any) }}>Đặt lại</Button>
+                </Space>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
       </Card>
 
-      {/* Recent Activity */}
-      <Card title='Recent Activity'>
-        <div style={{ padding: '16px 0' }}>
-          <p>📝 Exam "Math Final" was created</p>
-          <p>✅ Exam "Science Quiz" was completed by 25 students</p>
-          <p>📊 Results for "History Test" are now available</p>
-        </div>
+      <Card title={<Title level={4} style={{ margin: 0 }}>Tổng quan theo Exam-Subject</Title>} loading={loading}>
+        <Table
+          rowKey={(r) => r.examSubjectId}
+          columns={columns}
+          dataSource={items}
+          pagination={false}
+          scroll={{ x: 'max-content' }}
+        />
       </Card>
     </div>
   )
