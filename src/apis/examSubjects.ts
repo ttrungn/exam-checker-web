@@ -39,11 +39,7 @@ export const getExamSubjectById = async (id: string): Promise<ApiResponse<ExamSu
   return response.data
 }
 
-
-export const updateViolationStructure = async (
-  examSubjectId: string,
-  rules: ViolationStructure
-): Promise<boolean> => {
+export const updateViolationStructure = async (examSubjectId: string, rules: ViolationStructure): Promise<boolean> => {
   await api.put(`/api/v1/examsubjects/${examSubjectId}/violation-structure`, rules)
   return true
 }
