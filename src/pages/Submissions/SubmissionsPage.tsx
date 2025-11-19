@@ -22,7 +22,7 @@ import {
 } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 
-import { importScoreStructure, getExamSubjects } from '../../apis/examSubjects'
+import { getExamSubjects } from '../../apis/examSubjects'
 import type { ExamSubject } from '../../types/examSubject.dto'
 import {
   createSubmission,
@@ -52,7 +52,6 @@ const SubmissionsPage: React.FC = () => {
   const [uploadModalVisible, setUploadModalVisible] = useState(false)
   const [uploadForm] = Form.useForm()
   const [fileList, setFileList] = useState<UploadFile[]>([])
-  const [excelFileList, setExcelFileList] = useState<UploadFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [examiners, setExaminers] = useState<UserAccount[]>([])
   const [examinerSearchLoading, setExaminerSearchLoading] = useState(false)
@@ -154,7 +153,6 @@ const SubmissionsPage: React.FC = () => {
   const handleOpenUploadModal = async () => {
     uploadForm.resetFields()
     setFileList([])
-    setExcelFileList([])
     setUploadModalVisible(true)
     // Load initial examiners list
     await handleSearchExaminers('')
@@ -166,7 +164,6 @@ const SubmissionsPage: React.FC = () => {
     setUploadModalVisible(false)
     uploadForm.resetFields()
     setFileList([])
-    setExcelFileList([])
     setExaminers([])
   }
 
@@ -186,7 +183,7 @@ const SubmissionsPage: React.FC = () => {
 
   const handleUploadSubmit = async (values: any) => {
     if (fileList.length === 0) {
-      messageApi.error('Vui lòng chọn file ZIP để upload')
+      messageApi.error('Vui lòng chọn file nén (.zip hoặc .rar) để upload')
       return
     }
 
@@ -199,29 +196,15 @@ const SubmissionsPage: React.FC = () => {
 
     setUploading(true)
     try {
-      // Upload ZIP file và tạo submission
+      // Upload archive file và tạo submission
       const file = fileList[0].originFileObj as File
       await createSubmission({
         examinerId: selectedExaminer.id,
         examSubjectId: values.examSubjectId,
-        zipFile: file
+        archiveFile: file
       })
 
-      // Nếu có Excel file, upload score structure
-      if (excelFileList.length > 0) {
-        try {
-          const excelFile = excelFileList[0].originFileObj as File
-          await importScoreStructure(values.examSubjectId, excelFile)
-          messageApi.success('Upload file và phân công examiner thành công! Đã import tiêu chí chấm điểm.')
-        } catch (excelError: any) {
-          const excelErrorMessage =
-            excelError?.response?.data?.message ||
-            'Upload submission thành công nhưng lỗi khi import tiêu chí chấm điểm!'
-          messageApi.warning(excelErrorMessage)
-        }
-      } else {
-        messageApi.success('Upload file và phân công examiner thành công!')
-      }
+      messageApi.success('Upload file và phân công examiner thành công!')
 
       handleCloseUploadModal()
       fetchSubmissions(1, 10, searchParams)
@@ -238,13 +221,6 @@ const SubmissionsPage: React.FC = () => {
     // Chỉ giữ file mới nhất
     newFileList = newFileList.slice(-1)
     setFileList(newFileList)
-  }
-
-  const handleExcelFileChange = (info: any) => {
-    let newFileList = [...info.fileList]
-    // Chỉ giữ file mới nhất
-    newFileList = newFileList.slice(-1)
-    setExcelFileList(newFileList)
   }
 
   const loadExamSubjects = async () => {
@@ -665,27 +641,15 @@ const SubmissionsPage: React.FC = () => {
             />
           </Form.Item>
 
-          <Form.Item label='File ZIP' required>
+          <Form.Item label='File nén (ZIP/RAR)' required>
             <Upload
               fileList={fileList}
               onChange={handleFileChange}
               beforeUpload={() => false}
-              accept='.zip'
+              accept='.zip,.rar'
               maxCount={1}
             >
-              <Button icon={<PlusOutlined />}>Chọn file ZIP</Button>
-            </Upload>
-          </Form.Item>
-
-          <Form.Item label='File Excel Tiêu chí chấm' help='Tùy chọn: Upload file Excel chứa tiêu chí chấm điểm'>
-            <Upload
-              fileList={excelFileList}
-              onChange={handleExcelFileChange}
-              beforeUpload={() => false}
-              accept='.xlsx,.xls'
-              maxCount={1}
-            >
-              <Button icon={<PlusOutlined />}>Chọn file Excel</Button>
+              <Button icon={<PlusOutlined />}>Chọn file nén</Button>
             </Upload>
           </Form.Item>
 
