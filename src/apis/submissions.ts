@@ -13,6 +13,7 @@ import api from './apiClient'
 export interface CreateSubmissionData {
   examinerId: string
   examSubjectId: string
+  moderatorId: string
   archiveFile: File
 }
 
@@ -34,6 +35,7 @@ export const createSubmission = async (
   const formData = new FormData()
   formData.append('examinerId', data.examinerId)
   formData.append('examSubjectId', data.examSubjectId)
+  formData.append('moderatorId', data.moderatorId)
   formData.append('archiveFile', data.archiveFile)
 
   const response = await api.post<{ success: boolean; data: any; message: string }>(
@@ -121,6 +123,14 @@ export const approveAssessment = async (
     '/api/v1/submissions/assessments/approve',
     data
   )
+  return response.data
+}
+
+export const exportAssessments = async (examId: string, subjectId: string): Promise<Blob> => {
+  const response = await api.get('/api/v1/assessments/export', {
+    params: { examId, subjectId },
+    responseType: 'blob'
+  })
   return response.data
 }
 

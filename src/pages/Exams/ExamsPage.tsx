@@ -1,9 +1,10 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
+import { DeleteOutlined, DownloadOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 import React, { useCallback, useState } from 'react'
 
 import {
+  AutoComplete,
   Button,
   Card,
   Col,
@@ -23,8 +24,11 @@ import {
 
 import api from '../../apis/apiClient'
 import { createExam, deleteExam, getExamById, getExams, updateExam } from '../../apis/exams'
+import { getExamSubjects } from '../../apis/examSubjects'
+import { exportAssessments } from '../../apis/submissions'
 import type { PaginationResponse } from '../../types/api.dto'
 import type { Exam, ExamDetail } from '../../types/exam.dto'
+import type { ExamSubject } from '../../types/examSubject.dto'
 import type { Semester } from '../../types/semester.dto'
 
 const { Title } = Typography
@@ -49,6 +53,13 @@ const ExamsPage: React.FC = () => {
   const [searchForm] = Form.useForm()
   const [searchCode, setSearchCode] = useState('')
   const [searchStatus, setSearchStatus] = useState<boolean | null>(true)
+  const [isExportModalVisible, setIsExportModalVisible] = useState(false)
+  const [exportForm] = Form.useForm()
+  const [examSubjects, setExamSubjects] = useState<ExamSubject[]>([])
+  const [loadingExamSubjects, setLoadingExamSubjects] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
+  const [filteredExams, setFilteredExams] = useState<Exam[]>([])
+  const [selectedExamForExport, setSelectedExamForExport] = useState<Exam | null>(null)
 
   const [messageApi, messageContextHolder] = message.useMessage()
   const [modal, contextHolder] = Modal.useModal()
@@ -245,6 +256,87 @@ const ExamsPage: React.FC = () => {
     }
   }
 
+  const handleOpenExportModal = () => {
+    exportForm.resetFields()
+    setExamSubjects([])
+    setFilteredExams(exams)
+    setSelectedExamForExport(null)
+    setIsExportModalVisible(true)
+  }
+
+  const handleSearchExams = (searchValue: string) => {
+    if (!searchValue) {
+      setFilteredExams(exams)
+      return
+    }
+    const filtered = exams.filter((exam) => exam.code.toLowerCase().includes(searchValue.toLowerCase()))
+    setFilteredExams(filtered)
+  }
+
+  const handleSelectExam = async (examCode: string) => {
+    const selectedExam = exams.find((e) => e.code === examCode)
+    if (!selectedExam) return
+
+    setSelectedExamForExport(selectedExam)
+    setLoadingExamSubjects(true)
+    try {
+      const response = await getExamSubjects({
+        examCode: selectedExam.code,
+        isActive: true
+      })
+      if (response.success) {
+        setExamSubjects(response.data)
+        exportForm.setFieldsValue({ examSubjectId: undefined })
+      }
+    } catch (error: any) {
+      console.error('Error loading exam subjects:', error)
+      messageApi.error('Không thể tải danh sách môn thi')
+      setExamSubjects([])
+    } finally {
+      setLoadingExamSubjects(false)
+    }
+  }
+
+  const handleExportSubmit = async (values: any) => {
+    if (!selectedExamForExport) {
+      messageApi.error('Vui lòng chọn kỳ thi')
+      return
+    }
+
+    const selectedExamSubject = examSubjects.find((s) => s.id === values.examSubjectId)
+    if (!selectedExamSubject) {
+      messageApi.error('Vui lòng chọn môn thi')
+      return
+    }
+
+    setExportLoading(true)
+    try {
+      // Truyền examId và subjectId từ examSubject
+      const blob = await exportAssessments(selectedExamSubject.examId, selectedExamSubject.subjectId)
+
+      const fileName = `Diem_${selectedExamForExport.code}_${selectedExamSubject.subjectCode}_${dayjs().format('YYYYMMDDHHmmss')}.xlsx`
+
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      messageApi.success('Export điểm thành công!')
+      setIsExportModalVisible(false)
+      exportForm.resetFields()
+      setSelectedExamForExport(null)
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 'Không thể export điểm. Vui lòng thử lại!'
+      messageApi.error(errorMessage)
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
   const columns = [
     {
       title: 'Mã Kỳ Thi',
@@ -308,9 +400,14 @@ const ExamsPage: React.FC = () => {
         }}
       >
         <Title level={2}>Quản Lý Kỳ Thi</Title>
-        <Button type='primary' icon={<PlusOutlined />} onClick={handleOpenModal}>
-          Thêm Kỳ Thi Mới
-        </Button>
+        <Space>
+          <Button icon={<DownloadOutlined />} onClick={handleOpenExportModal}>
+            Export Điểm
+          </Button>
+          <Button type='primary' icon={<PlusOutlined />} onClick={handleOpenModal}>
+            Thêm Kỳ Thi Mới
+          </Button>
+        </Space>
       </div>
 
       <Card style={{ marginBottom: 16 }}>
@@ -449,6 +546,73 @@ const ExamsPage: React.FC = () => {
             </Descriptions.Item>
           </Descriptions>
         ) : null}
+      </Modal>
+
+      <Modal
+        title='Export Điểm'
+        open={isExportModalVisible}
+        onCancel={() => {
+          setIsExportModalVisible(false)
+          exportForm.resetFields()
+          setSelectedExamForExport(null)
+        }}
+        footer={null}
+      >
+        <Form form={exportForm} layout='vertical' onFinish={handleExportSubmit}>
+          <Form.Item label='Kỳ Thi' name='examCode' rules={[{ required: true, message: 'Vui lòng chọn kỳ thi' }]}>
+            <AutoComplete
+              placeholder='Tìm kiếm kỳ thi theo mã...'
+              onSearch={handleSearchExams}
+              onSelect={handleSelectExam}
+              notFoundContent='Không tìm thấy'
+              options={filteredExams.map((exam) => ({
+                value: exam.code,
+                label: (
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{exam.code}</div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {new Date(exam.startDate).toLocaleDateString('vi-VN')} -{' '}
+                      {new Date(exam.endDate).toLocaleDateString('vi-VN')}
+                    </div>
+                  </div>
+                )
+              }))}
+              filterOption={false}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label='Môn Thi'
+            name='examSubjectId'
+            rules={[{ required: true, message: 'Vui lòng chọn môn thi' }]}
+          >
+            <Select
+              placeholder='Chọn môn thi'
+              loading={loadingExamSubjects}
+              disabled={examSubjects.length === 0}
+              options={examSubjects.map((subject) => ({
+                label: `${subject.subjectCode} (${new Date(subject.startDate).toLocaleDateString('vi-VN')} - ${new Date(subject.endDate).toLocaleDateString('vi-VN')})`,
+                value: subject.id
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button
+                onClick={() => {
+                  setIsExportModalVisible(false)
+                  exportForm.resetFields()
+                }}
+              >
+                Hủy
+              </Button>
+              <Button type='primary' htmlType='submit' loading={exportLoading} icon={<DownloadOutlined />}>
+                Export
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )

@@ -2,6 +2,7 @@ import { useMsal } from '@azure/msal-react'
 import * as signalR from '@microsoft/signalr'
 
 import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import { silentRequest } from '../configs/maslConfig'
 import { fetchUserProfile } from '../features/user/userThunk'
@@ -12,30 +13,26 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 export const useAccountNotifications = () => {
   const { instance } = useMsal()
   const dispatch = useAppDispatch()
+  const location = useLocation()
 
   useEffect(() => {
     const account = instance.getActiveAccount()
-    if (!account) {
-      return
-    }
+    if (!account) return
 
     const currentUserOid = account.idTokenClaims?.oid as string | undefined
-    if (!currentUserOid) {
-      return
-    }
+    if (!currentUserOid) return
 
     let connection: signalR.HubConnection | null = null
 
     const connectSignalR = async () => {
       try {
-        // Get token first to ensure we have valid authentication
         await instance.acquireTokenSilent({
           ...silentRequest,
           account
         })
 
         connection = new signalR.HubConnectionBuilder()
-          .withUrl(`${API_BASE_URL}/hubs/account-notifications`, {
+          .withUrl(`${API_BASE_URL}/hubs/exam-checker-notifications`, {
             accessTokenFactory: async () => {
               const result = await instance.acquireTokenSilent({
                 ...silentRequest,
@@ -49,43 +46,40 @@ export const useAccountNotifications = () => {
           })
           .withAutomaticReconnect({
             nextRetryDelayInMilliseconds: (retryContext) => {
-              // Exponential backoff: 0, 2, 10, 30 seconds then every 30 seconds
-              if (retryContext.previousRetryCount === 0) {
-                return 0
-              } else if (retryContext.previousRetryCount === 1) {
-                return 2000
-              } else if (retryContext.previousRetryCount === 2) {
-                return 10000
-              } else {
-                return 30000
-              }
+              if (retryContext.previousRetryCount === 0) return 0
+              if (retryContext.previousRetryCount === 1) return 2000
+              if (retryContext.previousRetryCount === 2) return 10000
+              return 30000
             }
           })
-          .configureLogging(signalR.LogLevel.Information)
+          .configureLogging(signalR.LogLevel.None)
           .build()
 
         connection.on('AccountUpdated', async (payload: { userId: string }) => {
-          if (!payload?.userId) {
-            return
-          }
+          if (!payload?.userId) return
 
-          // Only reload if this event is about the currently logged-in user
           if (payload.userId.toLowerCase() === currentUserOid.toLowerCase()) {
             await dispatch(fetchUserProfile())
+            window.location.reload()
           }
         })
 
-        connection.onclose(() => {
-          // Connection closed
+        connection.on('SubmissionUploaded', async (payload: { userId: string }) => {
+          if (!payload?.userId) return
+
+          // only when this user and currently on /my-submissions
+          if (
+            payload.userId.toLowerCase() === currentUserOid.toLowerCase() &&
+            location.pathname === '/my-submissions'
+          ) {
+            console.log('SubmissionUploaded payload:', payload)
+            window.location.reload()
+          }
         })
 
-        connection.onreconnecting(() => {
-          // Connection reconnecting
-        })
-
-        connection.onreconnected(() => {
-          // Connection reconnected
-        })
+        connection.onclose(() => {})
+        connection.onreconnecting(() => {})
+        connection.onreconnected(() => {})
 
         await connection.start()
       } catch {
@@ -93,7 +87,6 @@ export const useAccountNotifications = () => {
       }
     }
 
-    // Start connection
     connectSignalR()
 
     return () => {
@@ -101,5 +94,5 @@ export const useAccountNotifications = () => {
         connection.stop().catch(() => {})
       }
     }
-  }, [instance, dispatch])
+  }, [instance, dispatch, location.pathname])
 }
