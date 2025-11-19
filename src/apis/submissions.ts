@@ -11,7 +11,7 @@ import api from './apiClient'
 export interface CreateSubmissionData {
   examinerId: string
   examSubjectId: string
-  zipFile: File
+  archiveFile: File
 }
 
 export const getSubmissions = async (params?: GetSubmissionsParams): Promise<SubmissionPaginationResponse> => {
@@ -32,7 +32,7 @@ export const createSubmission = async (
   const formData = new FormData()
   formData.append('examinerId', data.examinerId)
   formData.append('examSubjectId', data.examSubjectId)
-  formData.append('zipFile', data.zipFile)
+  formData.append('archiveFile', data.archiveFile)
 
   const response = await api.post<{ success: boolean; data: any; message: string }>(
     '/api/v1/submissions/upload',
