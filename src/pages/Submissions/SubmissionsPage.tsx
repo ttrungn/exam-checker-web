@@ -22,9 +22,10 @@ import {
 } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 
-import { getExamSubjects } from '../../apis/examSubjects'
-import type { ExamSubject } from '../../types/examSubject.dto'
+import { getExamSubjects, importScoreStructure } from '../../apis/examSubjects'
 import {
+  approveAssessment,
+  assignSubmission,
   createSubmission,
   getSubmissionById,
   getSubmissions,
@@ -32,6 +33,7 @@ import {
   type Submission
 } from '../../apis/submissions'
 import { getExaminers, type UserAccount } from '../../apis/users'
+import type { ExamSubject } from '../../types/examSubject.dto'
 import { AssessmentStatus, GradeStatus, SubmissionStatus } from '../../types/submission.dto'
 
 const { Title } = Typography
@@ -57,6 +59,12 @@ const SubmissionsPage: React.FC = () => {
   const [examinerSearchLoading, setExaminerSearchLoading] = useState(false)
   const [examSubjects, setExamSubjects] = useState<ExamSubject[]>([])
   const [examSubjectLoading, setExamSubjectLoading] = useState(false)
+  const [assignModalVisible, setAssignModalVisible] = useState(false)
+  const [assignForm] = Form.useForm()
+  const [assigning, setAssigning] = useState(false)
+  const [assignExaminers, setAssignExaminers] = useState<UserAccount[]>([])
+  const [assignExaminerSearchLoading, setAssignExaminerSearchLoading] = useState(false)
+  const [approving, setApproving] = useState<string | null>(null)
 
   const [messageApi, messageContextHolder] = message.useMessage()
 
@@ -234,6 +242,90 @@ const SubmissionsPage: React.FC = () => {
       // silent
     } finally {
       setExamSubjectLoading(false)
+    }
+  }
+
+  const handleOpenAssignModal = async () => {
+    assignForm.resetFields()
+    setAssignExaminers([])
+    setAssignModalVisible(true)
+    // Load initial examiners list
+    await handleSearchAssignExaminers('')
+  }
+
+  const handleCloseAssignModal = () => {
+    setAssignModalVisible(false)
+    assignForm.resetFields()
+    setAssignExaminers([])
+  }
+
+  const handleSearchAssignExaminers = async (searchValue: string) => {
+    setAssignExaminerSearchLoading(true)
+    try {
+      const response = await getExaminers(searchValue)
+      if (response.success) {
+        setAssignExaminers(response.data.items)
+      }
+    } catch (error) {
+      console.error('Error fetching examiners:', error)
+    } finally {
+      setAssignExaminerSearchLoading(false)
+    }
+  }
+
+  const handleAssignSubmit = async (values: any) => {
+    if (!selectedSubmission) {
+      messageApi.error('Không tìm thấy bài nộp được chọn')
+      return
+    }
+
+    // Tìm examiner ID từ email được chọn
+    const selectedExaminer = assignExaminers.find((e) => e.email === values.examinerId)
+    if (!selectedExaminer) {
+      messageApi.error('Không tìm thấy examiner. Vui lòng chọn lại!')
+      return
+    }
+
+    setAssigning(true)
+    try {
+      await assignSubmission({
+        submissionId: selectedSubmission.id,
+        examinerId: selectedExaminer.id
+      })
+
+      messageApi.success('Phân công examiner thành công!')
+      handleCloseAssignModal()
+      handleCloseDetailModal()
+      fetchSubmissions(pagination.pageIndex, pagination.pageSize, searchParams)
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 'Lỗi khi phân công examiner. Vui lòng thử lại!'
+      messageApi.error(errorMessage)
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  const handleApproveAssessment = async (assessmentId: string) => {
+    if (!selectedSubmission) {
+      messageApi.error('Không tìm thấy bài nộp được chọn')
+      return
+    }
+
+    setApproving(assessmentId)
+    try {
+      await approveAssessment({
+        submissionId: selectedSubmission.id,
+        assessmentId: assessmentId
+      })
+
+      messageApi.success('Duyệt bài chấm thành công!')
+      handleCloseDetailModal()
+      fetchSubmissions(pagination.pageIndex, pagination.pageSize, searchParams)
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 'Lỗi khi duyệt bài chấm. Vui lòng thử lại!'
+      messageApi.error(errorMessage)
+    } finally {
+      setApproving(null)
     }
   }
 
@@ -478,6 +570,9 @@ const SubmissionsPage: React.FC = () => {
         open={detailModalVisible}
         onCancel={handleCloseDetailModal}
         footer={[
+          <Button key='assign' type='primary' onClick={handleOpenAssignModal}>
+            Chọn người chấm khác
+          </Button>,
           <Button key='close' onClick={handleCloseDetailModal}>
             Đóng
           </Button>
@@ -495,12 +590,15 @@ const SubmissionsPage: React.FC = () => {
               style={{ marginBottom: 16 }}
               size='small'
             >
-              <Descriptions bordered column={2} size='small'>
+              <Descriptions bordered column={3} size='small'>
                 <Descriptions.Item label='Mã kỳ thi' span={1}>
                   <Typography.Text strong>{selectedSubmission.examCode}</Typography.Text>
                 </Descriptions.Item>
                 <Descriptions.Item label='Mã môn học' span={1}>
                   <Typography.Text strong>{selectedSubmission.subjectIdCode}</Typography.Text>
+                </Descriptions.Item>
+                <Descriptions.Item label='Moderator' span={1}>
+                  {selectedSubmission.moderatorEmail || <Tag color='default'>Chưa tham gia</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label='Tên bài nộp' span={1}>
                   <Typography.Text strong>
@@ -508,9 +606,6 @@ const SubmissionsPage: React.FC = () => {
                       ? selectedSubmission.assessments[0].submissionName
                       : '-'}
                   </Typography.Text>
-                </Descriptions.Item>
-                <Descriptions.Item label='Moderator' span={1}>
-                  {selectedSubmission.moderatorEmail || <Tag color='default'>Chưa tham gia</Tag>}
                 </Descriptions.Item>
                 <Descriptions.Item label='Trạng thái bài nộp' span={1}>
                   <Tag color={getStatusColor(selectedSubmission.status)}>
@@ -525,7 +620,7 @@ const SubmissionsPage: React.FC = () => {
                 <Descriptions.Item label='Ngày phân công' span={2}>
                   {new Date(selectedSubmission.assignAt).toLocaleString('vi-VN')}
                 </Descriptions.Item>
-                <Descriptions.Item label='File bài nộp' span={2}>
+                <Descriptions.Item label='File bài nộp' span={1}>
                   {selectedSubmission.fileUrl ? (
                     <Button type='link' href={selectedSubmission.fileUrl} target='_blank' rel='noopener noreferrer'>
                       Tải xuống file
@@ -544,8 +639,8 @@ const SubmissionsPage: React.FC = () => {
                     key={assessment.id}
                     style={{ marginBottom: index < selectedSubmission.assessments.length - 1 ? 16 : 0 }}
                   >
-                    <Descriptions bordered column={2} size='small'>
-                      <Descriptions.Item label='Examiner chấm' span={2}>
+                    <Descriptions bordered column={3} size='small'>
+                      <Descriptions.Item label='Examiner chấm' span={3}>
                         {assessment.examinerEmail || <Tag color='default'>Chưa phân</Tag>}
                       </Descriptions.Item>
                       <Descriptions.Item label='Trạng thái chấm bài' span={1}>
@@ -581,12 +676,23 @@ const SubmissionsPage: React.FC = () => {
                           <Typography.Text type='secondary'>Chưa chấm</Typography.Text>
                         )}
                       </Descriptions.Item>
-                      <Descriptions.Item label='Ngày chấm' span={2}>
+                      <Descriptions.Item label='Ngày chấm' span={1}>
                         {assessment.gradedAt ? (
                           new Date(assessment.gradedAt).toLocaleString('vi-VN')
                         ) : (
                           <Typography.Text type='secondary'>Chưa chấm</Typography.Text>
                         )}
+                      </Descriptions.Item>
+                      <Descriptions.Item label='Thao tác' span={3}>
+                        <Button
+                          type='primary'
+                          size='small'
+                          disabled={assessment.status !== AssessmentStatus.Complete}
+                          loading={approving === assessment.id}
+                          onClick={() => handleApproveAssessment(assessment.id)}
+                        >
+                          Chọn bài chấm này
+                        </Button>
                       </Descriptions.Item>
                     </Descriptions>
                   </div>
@@ -658,6 +764,47 @@ const SubmissionsPage: React.FC = () => {
               <Button onClick={handleCloseUploadModal}>Hủy</Button>
               <Button type='primary' htmlType='submit' loading={uploading}>
                 Upload
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title='Chọn người chấm khác'
+        open={assignModalVisible}
+        onCancel={handleCloseAssignModal}
+        footer={null}
+        width={500}
+      >
+        <Form form={assignForm} layout='vertical' onFinish={handleAssignSubmit}>
+          <Form.Item
+            label='Examiner mới'
+            name='examinerId'
+            rules={[{ required: true, message: 'Vui lòng chọn Examiner' }]}
+          >
+            <AutoComplete
+              placeholder='Tìm kiếm examiner theo email...'
+              onSearch={handleSearchAssignExaminers}
+              notFoundContent={assignExaminerSearchLoading ? 'Đang tải...' : 'Không tìm thấy'}
+              options={assignExaminers.map((examiner) => ({
+                value: examiner.email,
+                label: (
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{examiner.displayName}</div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>{examiner.email}</div>
+                  </div>
+                )
+              }))}
+              filterOption={false}
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={handleCloseAssignModal}>Hủy</Button>
+              <Button type='primary' htmlType='submit' loading={assigning}>
+                Phân công
               </Button>
             </Space>
           </Form.Item>

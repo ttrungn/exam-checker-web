@@ -72,7 +72,6 @@ export const useAccountNotifications = () => {
           // Only reload if this event is about the currently logged-in user
           if (payload.userId.toLowerCase() === currentUserOid.toLowerCase()) {
             await dispatch(fetchUserProfile())
-            window.location.reload()
           }
         })
 

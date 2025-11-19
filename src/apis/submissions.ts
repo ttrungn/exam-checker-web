@@ -1,5 +1,7 @@
 import type {
+  ApproveAssessmentData,
   AssessmentDetailResponse,
+  AssignSubmissionData,
   GetSubmissionsParams,
   Submission,
   SubmissionPaginationResponse,
@@ -103,6 +105,23 @@ export const updateSubmissionToModeratorViolated = async (submissionId: string):
 
 export const updateSubmissionToModeratorValidated = async (submissionId: string): Promise<void> => {
   await api.put(`/api/v1/submissions/${submissionId}/to-moderator-validated`)
+}
+
+export const assignSubmission = async (
+  data: AssignSubmissionData
+): Promise<{ success: boolean; data: any; message: string }> => {
+  const response = await api.post<{ success: boolean; data: any; message: string }>('/api/v1/submissions/assign', data)
+  return response.data
+}
+
+export const approveAssessment = async (
+  data: ApproveAssessmentData
+): Promise<{ success: boolean; data: any; message: string }> => {
+  const response = await api.post<{ success: boolean; data: any; message: string }>(
+    '/api/v1/submissions/assessments/approve',
+    data
+  )
+  return response.data
 }
 
 export type { GetSubmissionsParams, Submission, UserSubmission }

@@ -229,6 +229,7 @@ const MySubmissionsPage: React.FC = () => {
               size='small'
               type='primary'
               icon={<EditOutlined />}
+              disabled={record.assessmentStatus === AssessmentStatus.Cancelled}
               onClick={() => navigate(`/grading/${record.assessmentId}`)}
             >
               Chấm điểm
@@ -346,6 +347,7 @@ const MySubmissionsPage: React.FC = () => {
               key='grade'
               type='primary'
               icon={<EditOutlined />}
+              disabled={selectedSubmission?.assessmentStatus === AssessmentStatus.Cancelled}
               onClick={() => {
                 handleCloseDetailModal()
                 navigate(`/grading/${selectedSubmission.assessmentId}`)

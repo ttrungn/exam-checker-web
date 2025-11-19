@@ -175,3 +175,13 @@ export interface AssessmentDetailResponse {
   success: boolean
   message: string
 }
+
+export interface AssignSubmissionData {
+  submissionId: string
+  examinerId: string
+}
+
+export interface ApproveAssessmentData {
+  submissionId: string
+  assessmentId: string
+}
