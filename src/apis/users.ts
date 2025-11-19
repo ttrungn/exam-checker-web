@@ -131,5 +131,3 @@ export const getExaminers = async (email?: string): Promise<GetAccountsResponse>
   const response = await api.get<GetAccountsResponse>(url)
   return response.data
 }
-
-
