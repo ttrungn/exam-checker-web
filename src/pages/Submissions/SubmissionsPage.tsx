@@ -22,7 +22,8 @@ import {
 } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 
-import { getExamSubjects, importScoreStructure } from '../../apis/examSubjects'
+import { importScoreStructure, getExamSubjects } from '../../apis/examSubjects'
+import type { ExamSubject } from '../../types/examSubject.dto'
 import {
   approveAssessment,
   assignSubmission,
@@ -33,7 +34,6 @@ import {
   type Submission
 } from '../../apis/submissions'
 import { getExaminers, getModerators, type UserAccount } from '../../apis/users'
-import type { ExamSubject } from '../../types/examSubject.dto'
 import { AssessmentStatus, GradeStatus, SubmissionStatus } from '../../types/submission.dto'
 
 const { Title } = Typography
@@ -356,6 +356,7 @@ const SubmissionsPage: React.FC = () => {
       setApproving(null)
     }
   }
+
 
   const getStatusColor = (status: number) => {
     switch (status) {
