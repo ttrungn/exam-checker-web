@@ -126,4 +126,12 @@ export const approveAssessment = async (
   return response.data
 }
 
+export const exportAssessments = async (examId: string, subjectId: string): Promise<Blob> => {
+  const response = await api.get('/api/v1/assessments/export', {
+    params: { examId, subjectId },
+    responseType: 'blob'
+  })
+  return response.data
+}
+
 export type { GetSubmissionsParams, Submission, UserSubmission }
