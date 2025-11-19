@@ -32,7 +32,7 @@ import {
   type GetSubmissionsParams,
   type Submission
 } from '../../apis/submissions'
-import { getExaminers, type UserAccount } from '../../apis/users'
+import { getExaminers, getModerators, type UserAccount } from '../../apis/users'
 import type { ExamSubject } from '../../types/examSubject.dto'
 import { AssessmentStatus, GradeStatus, SubmissionStatus } from '../../types/submission.dto'
 
@@ -57,6 +57,8 @@ const SubmissionsPage: React.FC = () => {
   const [uploading, setUploading] = useState(false)
   const [examiners, setExaminers] = useState<UserAccount[]>([])
   const [examinerSearchLoading, setExaminerSearchLoading] = useState(false)
+  const [moderators, setModerators] = useState<UserAccount[]>([])
+  const [moderatorSearchLoading, setModeratorSearchLoading] = useState(false)
   const [examSubjects, setExamSubjects] = useState<ExamSubject[]>([])
   const [examSubjectLoading, setExamSubjectLoading] = useState(false)
   const [assignModalVisible, setAssignModalVisible] = useState(false)
@@ -164,6 +166,8 @@ const SubmissionsPage: React.FC = () => {
     setUploadModalVisible(true)
     // Load initial examiners list
     await handleSearchExaminers('')
+    // Load initial moderators list
+    await handleSearchModerators('')
     // Load exam subjects list
     await loadExamSubjects()
   }
@@ -173,6 +177,7 @@ const SubmissionsPage: React.FC = () => {
     uploadForm.resetFields()
     setFileList([])
     setExaminers([])
+    setModerators([])
   }
 
   const handleSearchExaminers = async (searchValue: string) => {
@@ -189,6 +194,20 @@ const SubmissionsPage: React.FC = () => {
     }
   }
 
+  const handleSearchModerators = async (searchValue: string) => {
+    setModeratorSearchLoading(true)
+    try {
+      const response = await getModerators(searchValue)
+      if (response.success) {
+        setModerators(response.data.items)
+      }
+    } catch (error) {
+      console.error('Error fetching moderators:', error)
+    } finally {
+      setModeratorSearchLoading(false)
+    }
+  }
+
   const handleUploadSubmit = async (values: any) => {
     if (fileList.length === 0) {
       messageApi.error('Vui lòng chọn file nén (.zip hoặc .rar) để upload')
@@ -202,13 +221,22 @@ const SubmissionsPage: React.FC = () => {
       return
     }
 
+    // Tìm moderator ID từ email được chọn
+    const selectedModerator = moderators.find((m) => m.email === values.moderatorId)
+    if (!selectedModerator) {
+      messageApi.error('Không tìm thấy moderator. Vui lòng chọn lại!')
+      return
+    }
+
     setUploading(true)
     try {
       // Upload archive file và tạo submission
       const file = fileList[0].originFileObj as File
+
       await createSubmission({
         examinerId: selectedExaminer.id,
         examSubjectId: values.examSubjectId,
+        moderatorId: selectedModerator.id,
         archiveFile: file
       })
 
@@ -740,6 +768,28 @@ const SubmissionsPage: React.FC = () => {
                   <div>
                     <div style={{ fontWeight: 500 }}>{examiner.displayName}</div>
                     <div style={{ fontSize: '12px', color: '#666' }}>{examiner.email}</div>
+                  </div>
+                )
+              }))}
+              filterOption={false}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label='Moderator'
+            name='moderatorId'
+            rules={[{ required: true, message: 'Vui lòng chọn Moderator' }]}
+          >
+            <AutoComplete
+              placeholder='Tìm kiếm moderator theo email...'
+              onSearch={handleSearchModerators}
+              notFoundContent={moderatorSearchLoading ? 'Đang tải...' : 'Không tìm thấy'}
+              options={moderators.map((moderator) => ({
+                value: moderator.email,
+                label: (
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{moderator.displayName}</div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>{moderator.email}</div>
                   </div>
                 )
               }))}
